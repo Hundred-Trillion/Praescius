@@ -67,6 +67,52 @@ const adaptiveConfidences = {};
 // Tracks latest raw WS prices to compare and calibrate DOM selectors (keyed by `${tabId}_${symbol}`)
 const latestWsPrices = {}; 
 
+// In-memory active building 1m candles aggregated from tick stream (keyed by `${tabId}_${symbol}`)
+const activeBuildingCandles = {};
+
+function aggregateTickTo1m(tick) {
+  if (tick.timeframe !== 'tick') return null;
+
+  const tabId = tick.tabId || 'default';
+  const symbol = tick.symbol;
+  const key = `${tabId}_${symbol}`;
+  const now = tick.timestamp;
+  
+  // Calculate start of the minute bucket
+  const minuteBucket = Math.floor(now / 60000) * 60000;
+
+  let building = activeBuildingCandles[key];
+
+  if (!building || minuteBucket > building.timestamp) {
+    building = {
+      schema: 1,
+      provider: tick.provider,
+      symbol: tick.symbol,
+      timestamp: minuteBucket,
+      open: tick.price,
+      high: tick.price,
+      low: tick.price,
+      close: tick.price,
+      price: tick.price,
+      volume: tick.volume || 0,
+      timeframe: '1m',
+      source: 'tick_aggregator',
+      tabId: tabId
+    };
+    activeBuildingCandles[key] = building;
+  } else {
+    // Update active building candle
+    building.high = Math.max(building.high, tick.price);
+    building.low = Math.min(building.low, tick.price);
+    building.close = tick.price;
+    building.price = tick.price;
+    building.volume += tick.volume || 0;
+  }
+
+  // Return a copy of the building candle
+  return { ...building };
+}
+
 /**
  * Open/Initialize Database layer.
  */
@@ -185,16 +231,29 @@ eventBus.subscribe('market.candle.v1', async (candle) => {
   if (lastIndex >= 0 && cache[lastIndex].timestamp === candle.timestamp) {
     cache[lastIndex] = candle;
   } else {
+    // Write completed previous candle to DB to persist actual finalized OHLC values
+    if (lastIndex >= 0 && tf !== 'tick') {
+      const completedCandle = cache[lastIndex];
+      chrome.storage.local.get(['settings'], async (res) => {
+        if (res.settings?.loggingEnabled !== false && appLogger) {
+          await appLogger.logCandle(completedCandle);
+        }
+      });
+    }
+
     cache.push(candle);
     if (cache.length > CACHE_LIMIT) {
       cache.shift();
     }
     
-    chrome.storage.local.get(['settings'], async (res) => {
-      if (res.settings?.loggingEnabled !== false && appLogger) {
-        await appLogger.logCandle(candle);
-      }
-    });
+    // For ticks, we write to DB immediately because each tick has a unique timestamp
+    if (tf === 'tick') {
+      chrome.storage.local.get(['settings'], async (res) => {
+        if (res.settings?.loggingEnabled !== false && appLogger) {
+          await appLogger.logCandle(candle);
+        }
+      });
+    }
   }
 
   chrome.runtime.sendMessage({
@@ -208,6 +267,14 @@ eventBus.subscribe('market.candle.v1', async (candle) => {
   });
 
   evaluateActiveRules(symbol, tf, tabId, candle.isHistorical);
+
+  // If this is a raw tick, aggregate it into a 1-minute OHLC candle and publish it too!
+  if (tf === 'tick') {
+    const aggregated1m = aggregateTickTo1m(candle);
+    if (aggregated1m) {
+      eventBus.publish('market.candle.v1', aggregated1m);
+    }
+  }
 });
 
 // 3. System Log event handler
