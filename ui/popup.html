@@ -189,6 +189,52 @@
       </div>
     </div>
 
+    <!-- JSONL Data Extraction -->
+    <div class="glass-panel">
+      <h2>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        JSONL Data Extraction
+      </h2>
+      <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 10px;">
+        
+        <!-- Live Stream Capture (Start/Stop) -->
+        <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">
+          <div style="font-weight: bold; margin-bottom: 6px; color: var(--primary); font-size: 0.75rem;">Live Stream Capture</div>
+          <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
+            <button id="btn-capture-start" class="btn" style="flex: 1; padding: 6px; font-size: 0.75rem; background: #00e676; color: #000; font-weight: bold; border-radius: 4px; border: none; cursor: pointer;">Start Capture</button>
+            <button id="btn-capture-stop" class="btn btn-danger" style="flex: 1; padding: 6px; font-size: 0.75rem; font-weight: bold; border-radius: 4px; cursor: pointer;" disabled>Stop & Export</button>
+          </div>
+          <div id="capture-status" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; font-style: italic;">Status: Idle</div>
+        </div>
+
+        <!-- Historical Time Window Export -->
+        <div>
+          <div style="font-weight: bold; margin-bottom: 6px; color: var(--primary); font-size: 0.75rem;">Historical Time Window</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span style="color: var(--text-muted); font-size: 0.75rem;">Time Window:</span>
+            <select id="extract-window" class="text-input" style="width: 140px; padding: 2px 6px; font-size: 0.75rem; height: 26px; margin: 0; background: rgba(20, 20, 25, 0.7); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 4px; outline: none; cursor: pointer;">
+              <option value="1">Last 1 min</option>
+              <option value="15">Last 15 min</option>
+              <option value="30">Last 30 min</option>
+              <option value="45">Last 45 min</option>
+              <option value="60">Last 1 hour</option>
+              <option value="120">Last 2 hours</option>
+              <option value="240">Last 4 hours</option>
+              <option value="720">Last 12 hours</option>
+              <option value="1440">Last 24 hours</option>
+              <option value="2880">Last 48 hours</option>
+              <option value="4320">Last 72 hours</option>
+              <option value="all">All History</option>
+            </select>
+          </div>
+          <button id="btn-extract-jsonl" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px; width: 100%; border-radius: 4px; cursor: pointer;">
+            Export Historical Window
+          </button>
+        </div>
+
+      </div>
+    </div>
+
     <!-- Raw WS Frames Log -->
     <div class="glass-panel">
       <h2>

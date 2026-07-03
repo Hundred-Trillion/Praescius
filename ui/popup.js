@@ -27,6 +27,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize Instant AI Config
   initInstantAIConfig();
 
+  // Initialize JSONL Extraction
+  initJSONLExtraction();
+
   // Bind Settings Launcher
   document.getElementById('btn-settings').addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
@@ -565,5 +568,149 @@ function initInstantAIConfig() {
       settings.geminiKey = key;
       chrome.storage.local.set({ settings });
     });
+  });
+}
+
+// ----------------------------------------------------
+// JSONL Extraction & Capture Controller
+// ----------------------------------------------------
+function initJSONLExtraction() {
+  const btnStart = document.getElementById('btn-capture-start');
+  const btnStop = document.getElementById('btn-capture-stop');
+  const statusEl = document.getElementById('capture-status');
+  const btnExtract = document.getElementById('btn-extract-jsonl');
+  const extractWindow = document.getElementById('extract-window');
+
+  if (!btnStart || !btnStop || !statusEl || !btnExtract) return;
+
+  // Load capture state on popup load
+  chrome.storage.local.get(['captureState'], (res) => {
+    const state = res.captureState || { isCapturing: false, startTime: null };
+    updateCaptureUI(state);
+  });
+
+  function updateCaptureUI(state) {
+    if (state.isCapturing) {
+      btnStart.disabled = true;
+      btnStart.style.opacity = '0.5';
+      btnStop.disabled = false;
+      btnStop.style.opacity = '1';
+      const dateStr = new Date(state.startTime).toLocaleTimeString();
+      statusEl.textContent = `Status: Capturing since ${dateStr}`;
+      statusEl.style.color = '#00e676';
+    } else {
+      btnStart.disabled = false;
+      btnStart.style.opacity = '1';
+      btnStop.disabled = true;
+      btnStop.style.opacity = '0.5';
+      statusEl.textContent = 'Status: Idle';
+      statusEl.style.color = 'var(--text-muted)';
+    }
+  }
+
+  // Bind Start button
+  btnStart.addEventListener('click', () => {
+    const state = {
+      isCapturing: true,
+      startTime: Date.now()
+    };
+    chrome.storage.local.set({ captureState: state }, () => {
+      updateCaptureUI(state);
+    });
+  });
+
+  // Bind Stop button
+  btnStop.addEventListener('click', async () => {
+    chrome.storage.local.get(['captureState'], async (res) => {
+      const state = res.captureState || { isCapturing: false, startTime: null };
+      if (!state.isCapturing || !state.startTime) return;
+
+      const stopTime = Date.now();
+      const startTime = state.startTime;
+
+      // Reset state first
+      const newState = { isCapturing: false, startTime: null };
+      chrome.storage.local.set({ captureState: newState }, () => {
+        updateCaptureUI(newState);
+      });
+
+      // Export records matching this interval
+      try {
+        const store = await getUIStore();
+        let candles = await getCandles(store, null, null, 100000);
+        
+        // Filter candles by the exact captured window
+        candles = candles.filter(c => c.timestamp >= startTime && c.timestamp <= stopTime);
+
+        if (candles.length === 0) {
+          alert('No candles were recorded during the capture window.');
+          return;
+        }
+
+        const fileContent = appLogger.convertToJSONL(candles);
+        const mimeType = 'text/plain;charset=utf-8;';
+        
+        const startStr = new Date(startTime).toISOString().replace(/[:.]/g, '-');
+        const stopStr = new Date(stopTime).toISOString().replace(/[:.]/g, '-');
+        const fileName = `candles_capture_${startStr}_to_${stopStr}.jsonl`;
+
+        const blob = new Blob([fileContent], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', fileName);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(`Failed to export captured stream: ${err.message}`);
+      }
+    });
+  });
+
+  // Bind Historical Window Extract button
+  btnExtract.addEventListener('click', async () => {
+    const val = extractWindow.value;
+    let minTimestamp = null;
+
+    if (val !== 'all') {
+      const mins = parseInt(val, 10);
+      minTimestamp = Date.now() - (mins * 60 * 1000);
+    }
+
+    try {
+      const store = await getUIStore();
+      let candles = await getCandles(store, null, null, 100000);
+
+      if (minTimestamp !== null) {
+        candles = candles.filter(c => c.timestamp >= minTimestamp);
+      }
+
+      if (candles.length === 0) {
+        alert('No candles in database for the selected time window.');
+        return;
+      }
+
+      const fileContent = appLogger.convertToJSONL(candles);
+      const mimeType = 'text/plain;charset=utf-8;';
+      
+      const timeLabel = val === 'all' ? 'all' : `${val}m`;
+      const fileName = `candles_extract_${timeLabel}_${Date.now()}.jsonl`;
+
+      const blob = new Blob([fileContent], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Extraction failed: ${err.message}`);
+    }
   });
 }

@@ -111,6 +111,7 @@ export class AppLogger {
       symbol: c.symbol,
       tf: c.timeframe,
       t: Math.floor(c.timestamp / 1000), // seconds
+      timestamp_iso: new Date(c.timestamp).toISOString(),
       o: c.open,
       h: c.high,
       l: c.low,
