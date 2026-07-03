@@ -214,6 +214,33 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
         sendResponse({ success: true });
         break;
 
+      case 'DOM_TICK':
+        if (sender.tab && sender.tab.url) {
+          providerManager.detectProvider(sender.tab.url, sender.tab.title);
+        }
+        const domPrice = Number(message.price);
+        const domSymbol = message.symbol || 'EUR/USD';
+        const domTimestamp = Number(message.timestamp || Date.now());
+        
+        const domCandle = {
+          schema: 1,
+          provider: providerManager.activeProvider?.name || 'dom_fallback',
+          symbol: domSymbol,
+          timestamp: domTimestamp,
+          open: domPrice,
+          high: domPrice,
+          low: domPrice,
+          close: domPrice,
+          price: domPrice,
+          volume: 0,
+          timeframe: 'tick',
+          source: 'dom_fallback'
+        };
+        
+        eventBus.publish('network:parsed_candle', domCandle);
+        sendResponse({ success: true });
+        break;
+
       case 'DISCOVERY_REPORT':
         latestDiscovery = message.data;
         const cacheKeys = Object.keys(candleCache);
