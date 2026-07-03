@@ -15,12 +15,15 @@ By migrating from a single-broker system (Quotex V1) to a decoupled plugin archi
 ## 2. Key Capabilities
 
 * **Multi-Broker Compatibility**: Scans active tabs and automatically matches parsing engines (e.g. Quotex, Binance, TradingView) to translate native WebSocket frames.
-* **Natural Language Rules Compiler**: Translates user-written prompts (e.g. *"Alert me if SMA 50 crosses above EMA 100 on BTC"*) into validated indicator criteria using Google Gemini, OpenAI, or local regex search fallbacks.
-* **Pluggable Indicator Suite**: Evaluates technical metrics (SMA, EMA, RSI, MACD, ATR, VWAP) and candlestick patterns on sliding window caches in real time.
-* **Event-Driven Brokerage Bus**: Uses a decoupled Event Bus pattern to handle packet decode cycles, log updates, rule evaluations, and system notifications without creating tight module dependencies.
-* **High-Performance Storage**: Recalls historical candlesticks from IndexedDB database stores and provides JSON Lines (JSONL) data exports for analytical test procedures.
+* **Versioned Event-Driven Pipeline**: Uses a decoupled Event Bus pattern to handle packet decode cycles, log updates, rule evaluations, and system notifications without creating tight module dependencies.
+* **Unified State Machine**: A central state controller tracks current execution states (`OFFLINE`, `CONNECTING`, `LIVE_WS`, `LIVE_DOM`, `REPLAY`, `ERROR`) to provide a single source of truth.
+* **Rules DSL (Offline Compiler)**: Offers instant natural-language compiler support beginning with `WHEN`, enabling fast condition registration without calling external cloud LLMs.
+* **Dynamic Plugin SDK**: Third-party exchanges or charting engines can be dropped into the `plugins/` directory containing a manifest, JavaScript parser class, and custom DOM selectors.
+* **Multi-Dimensional ML Confidence System**: Computes technical metrics to evaluate the reliability of active indicators, generating prediction scores, source weightings, and historical backtest win-rates.
+* **Adaptive Selector Calibration**: Compares live WebSockets against DOM fallback selectors and dynamically updates confidence scores based on price variations.
+* **Performance Telemetry Diagnostics**: Audits WS/DOM uptime, frame parsing speeds, AI summarizer response times, selector errors, and replay execution latency.
 * **Offline Replay Simulator**: Simulates active WebSocket ticks from historical data files, allowing complete alert verification without live internet connections.
-* **Interactive Developer Console**: Tracks raw socket streams, parsed candle series objects, database writes, and engine latencies from a secondary dashboard.
+* **Interactive Developer Console**: Tracks raw socket streams, parsed candle series objects, database writes, and telemetry logs from a secondary dashboard.
 
 ---
 
@@ -36,11 +39,14 @@ Aetheris Market Observer/
 ├── inject.js                      # Websocket interception script (Main world)
 ├── developer_doc.md               # Dynamic flow charts and sequence diagrams
 ├── README.md                      # Quick-start installation instructions
+├── everything.md                  # Master documentation (This file)
 │
 ├── core/
 │   ├── eventBus.js                # Singleton publish-subscribe broker
-│   ├── compiler.js                # Sanitizes LLM outputs against logic schemas
-│   ├── evaluator.js               # Tracks cache streams and executes indicators
+│   ├── stateMachine.js            # Unified execution state controller
+│   ├── telemetry.js               # Performance metrics aggregator
+│   ├── compiler.js                # Sanitizes LLM outputs and parses Rules DSL
+│   ├── evaluator.js               # Tracks cache streams and executes indicators/ML reports
 │   ├── logger.js                  # Manages IndexedDB writes and JSONL formatting
 │   ├── notifier.js                # Triggers system alerts and push notifications
 │   └── replay.js                  # Feeds historical files to simulate market data
@@ -56,6 +62,12 @@ Aetheris Market Observer/
 │   ├── bybit/                     # Bybit V5 template
 │   ├── okx/                       # OKX V5 template
 │   └── mt5/                       # MetaTrader 5 template
+│
+├── plugins/
+│   └── dummy/                     # Mock exchange plugin illustrating Plugin SDK
+│       ├── manifest.json          # Plugin manifest descriptor
+│       ├── provider.js            # Parser implementation class
+│       └── selectors.json         # DOM query selectors
 │
 ├── indicators/
 │   ├── baseIndicator.js           # Abstract calculation template
@@ -103,38 +115,55 @@ Aetheris Market Observer/
 
 ---
 
-## 4. Module Architecture Walkthrough
+## 4. Architectural Deep-Dive
 
 ### A. Interception Bridge (`inject.js` & `content.js`)
 * `inject.js` runs in the main world context of target pages. It wraps the native `WebSocket` API constructor, capturing both incoming and outgoing packet parameters without interrupting the main application. It uses `window.postMessage` to pass raw messages to `content.js`.
 * `content.js` runs in an isolated extension context. It captures messages from `inject.js`, checks origin validity, and relays them to the background worker using `chrome.runtime.sendMessage`.
 
-### B. Core Event Bus (`core/eventBus.js`)
-Coordinates message handling in the background service worker:
-* `network:ws_raw`: Fired when a raw frame is received. `providerManager` intercepts and parses it.
-* `network:parsed_candle`: Fired when a parser resolves a candlestick. `logger.js` writes it to IndexedDB, and `evaluator.js` processes running technical rules.
-* `logs:system`: Logs system updates and events to storage.
-* `rule:triggered`: Emitted when active technical conditions match. This triggers `notifier.js` to show a desktop notification.
+### B. Versioned Event Bus (`core/eventBus.js`)
+Handles asynchronous communication inside the service worker using versioned channels:
+* `market.tick.v1`: Fired when a raw frame is received. `providerManager` intercepts and parses it.
+* `market.candle.v1`: Fired when a parser resolves a candlestick. `logger.js` writes it to IndexedDB, and `evaluator.js` processes running technical rules.
+* `market.rule.trigger.v1`: Fired when active technical conditions match. 
+* `market.ai.summary.v1`: Fired when Gemini/OpenAI completes a micro-trend notification summary.
+* `system.state.changed.v1`: Broadcasts state machine transitions.
+* `system.logs.v1`: Centralized diagnostics logger.
 
-### C. Providers Layer (`providers/`)
-Inherits from `BaseProvider`. Dynamically routes packets to active parsing engines:
-* **Quotex**: Decodes Engine.IO / Socket.IO packet wrappers and standardizes price quotes.
-* **Binance**: Decodes public Binance kline (`@kline_1m`) and mini-ticker events.
-* **Scaffolds**: Stubs exist for TradingView, Deriv, Pocket Option, Bybit, OKX, and MT5 to outline discovery checks and symbol definitions.
+### C. State Machine Orchestration (`core/stateMachine.js`)
+Manages execution transitions to ensure one source of truth:
+* `OFFLINE` - Default idle state when no active brokers are matched.
+* `CONNECTING` - Active discovery state checking selectors and hook points.
+* `LIVE_WS` - Primary stream active decoding raw WebSocket packets.
+* `LIVE_DOM` - Fallback stream active extraction price from page elements.
+* `REPLAY` - Simulator mode active reading local JSONL files.
+* `ERROR` - Halted state due to exceptions or network drop.
 
-### D. Pluggable Indicators (`indicators/`)
-Indicators inherit from `BaseIndicator`. They compute standard calculations over the sliding window cache:
-* `SMA` / `EMA`: Computes moving averages over user-specified periods.
-* `RSI`: Calculates momentum based on gains/losses.
-* `MACD`: Resolves MACD, signal lines, and histograms.
-* `ATR`: Calculates volatility using true ranges.
-* `VWAP`: Computes volume-weighted average price points.
+### D. Rules DSL Compiler (`core/compiler.js`)
+Instantly parses natural-language syntax strings starting with `WHEN`:
+* Translates indicators (RSI, EMA, etc.), operators (crosses above, crosses below, etc.), numeric comparison scalars, and candlestick patterns.
+* Evaluates conditions locally on the background thread cache, eliminating network calls, latency, and cloud dependency for structured commands.
 
-### E. AI Translators (`ai/`)
-Translates user instructions into structured JSON configurations:
-* **Gemini**: Calls `gemini-1.5-flash` in JSON output mode.
-* **OpenAI**: Calls `gpt-4o-mini` with structured JSON parameters.
-* **Local**: Uses regex keywords to map queries without network access or API keys.
+### E. Self-Contained Plugin SDK (`plugins/`)
+Exposes a dynamic dynamic-load framework. When the background worker initializes, it queries folders under `/plugins/` via standard browser fetches:
+* `manifest.json`: Defines plugin properties.
+* `provider.js`: Exports the custom parser class extending `BaseProvider`.
+* `selectors.json`: Custom array of DOM query fallbacks.
+
+### F. Multi-Dimensional ML Confidence System (`core/evaluator.js`)
+Calculates condition reliability:
+1. **Prediction Confidence**: Derived from Relative Strength Index (RSI) proximity to extreme bounds, estimating trend continuity probability.
+2. **Data Confidence**: Evaluates the reliability of the source feed (WebSocket: 1.0, DOM selector: 0.1–0.99, title fallback: 0.5).
+3. **Rule Confidence**: Based on condition count and logical operator complexity.
+4. **Historical Success Rate**: Back-runs the compiled conditions over the in-memory candlestick cache to calculate historical win-rate outcomes.
+
+### G. Performance Telemetry Diagnostics (`core/telemetry.js`)
+Measures runtime diagnostic statistics:
+* WebSocket/DOM active connection uptimes.
+* Frame decoding latencies (ms).
+* LLM notification summary generation speed (ms).
+* Cumulative selector extraction failures.
+* Simulator tick processing speeds (ms).
 
 ---
 
@@ -157,7 +186,7 @@ Aetheris uses the Gemini API to parse natural language prompts. Follow these ste
 
 To test Aetheris offline using the built-in simulator:
 1. Open the extension popup, go to the **Developer Panel** tab, and click **Load Simulation Dataset**. This loads mock candles from `logs/candles.jsonl`.
-2. Go to the **Dashboard** tab, enter a test condition (e.g., *"Notify if RSI is greater than 70"*), and click **Compile & Save Rule**.
+2. Go to the **Dashboard** tab, enter a test condition (e.g., *"Notify if RSI is greater than 70"* or write DSL starting with `WHEN`), and click **Compile & Save Rule**.
 3. Return to the **Developer Panel** tab and click **Play**.
 4. The simulator will stream historical candles into the event bus. When the condition matches, a browser notification will fire.
-5. You can view the live output in the developer logs section at the bottom.
+5. You can view the live output and real-time performance telemetry in the panels at the bottom.

@@ -1,6 +1,6 @@
 # Aetheris Market Observer (V2)
 
-Aetheris Market Observer is an extensible, high-performance, and **strictly observational** Chrome Extension (Manifest V3) designed to observe, parse, and analyze real-time market data directly from financial web charting applications (such as Quotex and others) and notify users when user-defined technical conditions are met.
+Aetheris Market Observer is an extensible, high-performance, and **strictly observational** Chrome Extension (Manifest V3) designed to observe, parse, and analyze real-time market data directly from financial web charting applications and notify users when user-defined technical conditions are met.
 
 > [!IMPORTANT]
 > **Observation-Only Rule**: This extension is read-only. It does **not** make trades, place binary options orders, click buy/sell execution elements, bypass platform checks, or interact with financial transaction services.
@@ -10,15 +10,40 @@ Aetheris Market Observer is an extensible, high-performance, and **strictly obse
 ## What It Does & How It Works
 
 ### 1. What It Does
-Aetheris tracks live asset streams (such as `BTC/USD`) on active broker tabs. It logs candlestick data, evaluates technical indicators (RSI, SMA, EMA, MACD, ATR, VWAP), checks for specific candlestick patterns (Doji, Hammer, Engulfing), and generates system notifications when rules match. Users create rules in plain natural language (e.g., *"Notify me when RSI crosses below 30 and there is a Doji candle"*), which the extension translates and validates locally.
+Aetheris tracks live asset streams (such as `BTC/USD` or `EUR/USD`) on active broker tabs. It logs candlestick data, evaluates technical indicators (RSI, SMA, EMA, MACD, ATR, VWAP), checks for specific candlestick patterns (Doji, Hammer, Engulfing), and generates system notifications when rules match. Users create rules in plain natural language or using the structured **Rules DSL**, which the extension compiles and validates locally.
 
-### 2. How It Works
-* **Dynamic WebSocket Interception**: The extension injects a main-world capture script (`inject.js`) that wraps the global `window.WebSocket` constructor. This intercepts socket traffic and forwards it to the content script using HTML5 `postMessage`.
-* **Event-Driven Architecture**: The background service worker listens to forwarded packets and broadcasts them over a central **Event Bus** (`core/eventBus.js`) to decouple components.
-* **Abstracted Providers Layer**: Sub-parsers (`providers/`) decode specific message protocols (e.g. Socket.IO headers) and format them into a uniform data schema.
-* **Modular Indicator Plugins**: Technical indicators are computed using dedicated classes (`indicators/`) inheriting from `BaseIndicator`.
-* **Rule Compiler & Local Evaluator**: Natural language prompts are converted to JSON, validated by a validation module (`core/compiler.js`) to protect runtime integrity, and executed on the sliding candle cache.
+### 2. Core Architecture
+* **State Machine (`core/stateMachine.js`)**: Tracks execution states as a single source of truth (`OFFLINE`, `CONNECTING`, `LIVE_WS`, `LIVE_DOM`, `REPLAY`, `ERROR`).
+* **Versioned Event Bus (`core/eventBus.js`)**: Decouples components by routing actions over structured channels:
+  * `market.tick.v1` — Decoded web-socket ticks
+  * `market.candle.v1` — Standardized OHLCV candles
+  * `market.rule.trigger.v1` — Dispatched when technical conditions evaluate to true
+  * `market.ai.summary.v1` — AI-generated notification summaries
+  * `provider.connected.v1` / `provider.disconnected.v1` — Broker provider connection status
+  * `system.state.changed.v1` — Internal state updates
+  * `system.logs.v1` — Core diagnostics logger
+* **Dynamic WebSocket Interception**: Captures socket traffic via an injected main-world script (`inject.js`) and forwards it to the content script using HTML5 `postMessage`.
+* **Dynamic Plugin SDK**: External platforms can be registered as self-contained directories under `plugins/{key}/` containing a `manifest.json`, `provider.js`, and `selectors.json`, loaded dynamically via native ESM imports.
+* **Historical Validation & Adaptive Confidence**: Compares real-time WebSocket ticks against DOM fallbacks, adjusting the confidence weighting dynamically based on price agreement ($\Delta = |P_{\text{ws}} - P_{\text{dom}}|$).
+* **Multi-Dimensional ML Confidence System**: Generates a unified confidence report based on Prediction, Data Source, Rule structure, and Cache-based Historical success rates.
+* **Performance Telemetry Diagnostics**: Logs execution metrics including WS/DOM uptime, frame parsing speeds, AI summarizer response times, selector errors, and replay execution latency.
 * **Deterministic Simulation Player**: An offline Replay Engine (`core/replay.js`) parses historical JSON Lines (`logs/candles.jsonl`) to simulate streaming market data for dry-run verification.
+
+---
+
+## Rules DSL (Offline Compiler)
+You can write structured rule conditions beginning with `WHEN` to compile rules instantly offline:
+```text
+WHEN
+  RSI < 30
+  AND
+  EMA9 crosses above 100
+THEN
+  Notify
+```
+* **Supported Indicators**: `Price`, `RSI`, `SMA`, `EMA`, `MACD`, `ATR`, `VWAP`
+* **Supported Operators**: `>`, `<`, `>=`, `<=`, `==`, `crosses above`, `crosses below`
+* **Supported Patterns**: `Three Bullish Candles`, `Three Bearish Candles`, `Bullish Engulfing`, `Bearish Engulfing`, `Doji`, `Hammer`
 
 ---
 
@@ -56,9 +81,14 @@ Aetheris uses the Gemini API to translate natural language rules into structured
 To verify the rules engine and notifications without opening live charts:
 1. Open the extension popup and switch to the **Developer Panel** tab.
 2. Click **Load Simulation Dataset**. The replay tracker will load candles from `logs/candles.jsonl`.
-3. Switch back to the **Dashboard** tab and type a test prompt, for example:
-   * `Notify me if RSI is greater than 70`
+3. Switch back to the **Dashboard** tab and type a test prompt or write DSL, for example:
+   ```text
+   WHEN
+     RSI > 70
+   THEN
+     Notify
+   ```
 4. Click **Compile & Save Rule**.
 5. Return to the **Developer Panel** tab and click **Play**.
 6. The simulator will stream candles into the event pipeline. When the condition matches, a browser notification alert will trigger.
-7. Review raw frames and parsed streams inside the panels below the player controls.
+7. Review raw frames, parsed streams, and live performance metrics inside the panels below the player controls.
