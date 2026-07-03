@@ -288,5 +288,45 @@ runTest('Compiler - Candle Geometry Rule Validation', () => {
   }
 });
 
+runTest('Compiler & Evaluator - Previous Candle Properties (prevClose)', () => {
+  const rawRule = {
+    name: 'Rising Close Alert',
+    operator: 'AND',
+    conditions: [
+      {
+        indicator: 'Candle',
+        property: 'close',
+        operator: '>',
+        value: 'prevClose'
+      }
+    ]
+  };
+
+  const compiled = compileRule(rawRule);
+  if (!compiled || compiled.conditions[0].value !== 'prevClose') {
+    throw new Error('Failed to compile candle comparison to prevClose.');
+  }
+
+  const candles = [
+    { open: 100, high: 105, low: 98, close: 102, timestamp: Date.now() - 60000 }, // prevClose = 102
+    { open: 102, high: 110, low: 101, close: 104, timestamp: Date.now() }        // close = 104
+  ];
+
+  const matched = evaluateRule(candles, compiled);
+  if (!matched) {
+    throw new Error('Evaluator failed to match close > prevClose where 104 > 102.');
+  }
+
+  const invalidCandles = [
+    { open: 100, high: 105, low: 98, close: 102, timestamp: Date.now() - 60000 }, // prevClose = 102
+    { open: 102, high: 105, low: 95, close: 101, timestamp: Date.now() }         // close = 101
+  ];
+
+  const matchedInvalid = evaluateRule(invalidCandles, compiled);
+  if (matchedInvalid) {
+    throw new Error('Evaluator falsely matched close > prevClose where 101 < 102.');
+  }
+});
+
 console.log(`\n=== SCENARIO VERIFICATION COMPLETE (FAILED: ${failed}) ===`);
 process.exit(failed > 0 ? 1 : 0);

@@ -22,7 +22,7 @@ You must output ONLY valid JSON matching this schema:
       "indicator": "Candle",
       "property": "open" | "close" | "high" | "low" | "body" | "upperWick" | "lowerWick" | "upperWickRatio" | "lowerWickRatio" | "bodyRatio" | "isBearish" | "isBullish",
       "operator": ">" | "<" | ">=" | "<=" | "==",
-      "value": number (e.g. 0.5 for 50%) or string property name (e.g. "open", "close")
+      "value": number (e.g. 0.5 for 50%) or string property name (e.g. "open", "close", "prevOpen", "prevClose", "prevHigh", "prevLow")
     },
     {
       "pattern": "Three Bullish Candles" | "Three Bearish Candles" | "Bullish Engulfing" | "Bearish Engulfing" | "Doji" | "Hammer"
@@ -53,6 +53,8 @@ Examples for Candle indicator:
   {"indicator": "Candle", "property": "upperWickRatio", "operator": ">", "value": 0.5}
 - "body is larger than upper wick":
   {"indicator": "Candle", "property": "body", "operator": ">", "value": "upperWick"}
+- "close is greater than previous close":
+  {"indicator": "Candle", "property": "close", "operator": ">", "value": "prevClose"}
 
 Supported Patterns:
 - "Three Bullish Candles"

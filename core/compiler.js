@@ -74,7 +74,7 @@ export function compileRule(rawJSON) {
       let parsedValue;
       if (indName === 'Candle') {
         const validProps = ['open', 'close', 'high', 'low', 'body', 'upperWick', 'lowerWick', 'upperWickRatio', 'lowerWickRatio', 'bodyRatio', 'isBearish', 'isBullish'];
-        const validValProps = ['open', 'close', 'high', 'low', 'body', 'upperWick', 'lowerWick'];
+        const validValProps = ['open', 'close', 'high', 'low', 'body', 'upperWick', 'lowerWick', 'prevOpen', 'prevClose', 'prevHigh', 'prevLow'];
 
         if (!cond.property || !validProps.includes(cond.property)) {
           throw new Error(`Unsupported or missing property: "${cond.property}" for Candle indicator.`);

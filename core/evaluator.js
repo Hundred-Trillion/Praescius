@@ -92,13 +92,24 @@ function evaluateCondition(candles, cond) {
 
       let val2 = cond.value;
       if (typeof val2 === 'string') {
+        const prevCandle = lastIdx > 0 ? candles[lastIdx - 1] : null;
         if (['open', 'close', 'high', 'low', 'body', 'upperWick', 'lowerWick'].includes(val2)) {
           val2 = resolveProperty(current, val2);
+        } else if (val2 === 'prevOpen') {
+          val2 = prevCandle ? prevCandle.open : undefined;
+        } else if (val2 === 'prevClose') {
+          val2 = prevCandle ? prevCandle.close : undefined;
+        } else if (val2 === 'prevHigh') {
+          val2 = prevCandle ? prevCandle.high : undefined;
+        } else if (val2 === 'prevLow') {
+          val2 = prevCandle ? prevCandle.low : undefined;
         } else {
           const parsedVal = parseFloat(val2);
           if (!isNaN(parsedVal)) val2 = parsedVal;
         }
       }
+
+      if (val1 === undefined || val2 === undefined) return false;
 
       return compare(val1, cond.operator, val2, candles);
     }
