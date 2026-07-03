@@ -77,7 +77,6 @@ try {
 
 window.addEventListener('message', (event) => {
   if (!isContextValid()) return;
-  if (event.source !== window) return;
 
   const msg = event.data;
   if (!msg || typeof msg !== 'object') return;

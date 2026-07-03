@@ -5,6 +5,8 @@ import { PocketOptionProvider } from './providers/pocketoption/index.js';
 import { BybitProvider } from './providers/bybit/index.js';
 import { evaluateRule } from './core/evaluator.js';
 import { compileRule } from './core/compiler.js';
+import LiquiditySweepStrategy from './strategies/liquiditySweep.js';
+import ConsensusEngine from './engine/ConsensusEngine.js';
 
 let failed = 0;
 console.log('=== STARTING ALL SCOPED PROVIDERS PARSER VERIFICATION ===\n');
@@ -325,6 +327,155 @@ runTest('Compiler & Evaluator - Previous Candle Properties (prevClose)', () => {
   const matchedInvalid = evaluateRule(invalidCandles, compiled);
   if (matchedInvalid) {
     throw new Error('Evaluator falsely matched close > prevClose where 101 < 102.');
+  }
+});
+
+runTest('Strategies - Custom Quantitative Liquidity Sweep Plugin', () => {
+  const strategy = new LiquiditySweepStrategy();
+
+  // Create 20 baseline candles
+  const candles = [];
+  const baseTime = Date.now() - 30 * 60000;
+  for (let i = 0; i < 20; i++) {
+    candles.push({
+      open: 100,
+      high: 105,
+      low: 95,
+      close: 101,
+      timestamp: baseTime + i * 60000
+    });
+  }
+
+  // Add 5 previous descending low/bearish candles with declining volatility and no large upper wicks
+  // Lows: 90, 88, 86, 84, 82
+  // Volatility ranges: 12, 11, 10, 9, 8
+  const lows = [90, 88, 86, 84, 82];
+  const ranges = [12, 11, 10, 9, 8];
+  for (let i = 0; i < 5; i++) {
+    candles.push({
+      open: lows[i] + ranges[i] - 0.5,
+      high: lows[i] + ranges[i],
+      low: lows[i],
+      close: lows[i] + 1, // Highly bearish
+      timestamp: baseTime + (20 + i) * 60000
+    });
+  }
+
+  // Current Candle: Sweeps the previous low (82), high range expansion, bullish, wick >= 65%, body 30-60%
+  // open = 116, close = 146, low = 50 (sweeps 82), high = 150 (range = 100)
+  // Lower wick = 116 - 50 = 66 -> 66% of range
+  // Body = 146 - 116 = 30 -> 30% of range
+  // Close position = 150 - 146 = 4 -> 4% of range (within top 10%)
+  const currentCandle = {
+    open: 116,
+    high: 150,
+    low: 50,
+    close: 146,
+    timestamp: Date.now() - 30000
+  };
+  candles.push(currentCandle);
+
+  // Mock ticks for acceleration, velocity doubling, and vwap checks
+  const ticks = [];
+  const tickTime = Date.now() - 30000;
+  
+  // First 10 ticks (0 to 24s) - price starts low (sweep) then jumps high
+  for (let i = 0; i < 10; i++) {
+    ticks.push({
+      price: i < 3 ? 50 : 140,
+      timestamp: tickTime + (i * 2400)
+    });
+  }
+  // Last 10 ticks (24s to 30s) - price accelerating up to 146
+  for (let i = 0; i < 10; i++) {
+    ticks.push({
+      price: 141 + (i * i * 0.05) + (i * 0.1),
+      timestamp: tickTime + 24000 + (i * 600)
+    });
+  }
+
+  const result = strategy.evaluate(candles, ticks);
+  console.log('STRATEGY EVALUATION RESULT:', JSON.stringify(result, null, 2));
+  if (!result || !result.triggered) {
+    throw new Error('Strategy failed to trigger under mathematically perfect sweep conditions.');
+  }
+
+  if (result.score < 96) {
+    throw new Error(`Strategy triggered but score was ${result.score} (< 96).`);
+  }
+
+  // Verify failure on baseline only
+  const baseOnlyResult = strategy.evaluate(candles.slice(0, 20), ticks);
+  if (baseOnlyResult.triggered) {
+    throw new Error('Strategy falsely triggered on baseline history.');
+  }
+});
+
+runTest('ConsensusEngine - Multi-Strategy Quantitative Consensus Engine', () => {
+  // Create 20 baseline candles
+  const candles = [];
+  const baseTime = Date.now() - 30 * 60000;
+  for (let i = 0; i < 20; i++) {
+    candles.push({ open: 100, high: 105, low: 95, close: 101, timestamp: baseTime + i * 60000 });
+  }
+
+  // Mock ticks
+  const ticks = [{ price: 101, timestamp: Date.now() }];
+
+  // Scenario 1: No strategies active -> triggered should be false
+  const resEmpty = ConsensusEngine.evaluate(candles, ticks, {});
+  if (resEmpty.triggered) {
+    throw new Error('Consensus Engine triggered with no active models.');
+  }
+
+  // Scenario 2: Liquidity Sweep active but not met -> triggered should be false
+  const activeSingle = { 'Liquidity Sweep': true };
+  const resSingleNotMet = ConsensusEngine.evaluate(candles, ticks, activeSingle);
+  if (resSingleNotMet.triggered) {
+    throw new Error('Consensus Engine triggered single inactive model.');
+  }
+
+  // Scenario 3: Liquidity Sweep active and perfect sweep conditions met
+  const perfectCandles = [];
+  for (let i = 0; i < 20; i++) {
+    perfectCandles.push({ open: 100, high: 105, low: 95, close: 101, timestamp: baseTime + i * 60000 });
+  }
+  const lows = [90, 88, 86, 84, 82];
+  const ranges = [12, 11, 10, 9, 8];
+  for (let i = 0; i < 5; i++) {
+    perfectCandles.push({
+      open: lows[i] + ranges[i] - 0.5,
+      high: lows[i] + ranges[i],
+      low: lows[i],
+      close: lows[i] + 1,
+      timestamp: baseTime + (20 + i) * 60000
+    });
+  }
+  perfectCandles.push({
+    open: 116,
+    high: 150,
+    low: 50,
+    close: 146,
+    timestamp: Date.now() - 30000
+  });
+
+  const perfectTicks = [];
+  const tickTime = Date.now() - 30000;
+  for (let i = 0; i < 10; i++) {
+    perfectTicks.push({ price: i < 3 ? 50 : 140, timestamp: tickTime + (i * 2400) });
+  }
+  for (let i = 0; i < 10; i++) {
+    perfectTicks.push({ price: 141 + (i * i * 0.05) + (i * 0.1), timestamp: tickTime + 24000 + (i * 600) });
+  }
+
+  const resPerfect = ConsensusEngine.evaluate(perfectCandles, perfectTicks, { 'Liquidity Sweep': true });
+  console.log('resPerfect:', JSON.stringify(resPerfect, null, 2));
+  if (!resPerfect.triggered) {
+    throw new Error('Consensus Engine failed to trigger when Liquidity Sweep was active and met.');
+  }
+
+  if (resPerfect.confidence < 95) {
+    throw new Error(`Expected at least 95% confidence, got ${resPerfect.confidence}%`);
   }
 });
 

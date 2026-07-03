@@ -18,11 +18,15 @@ import RSI from './indicators/RSI.js';
 import EMA from './indicators/EMA.js';
 import SMA from './indicators/SMA.js';
 import MACD from './indicators/MACD.js';
+import ConsensusEngine from './engine/ConsensusEngine.js';
+import AlertEngine from './engine/AlertEngine.js';
 
 const rsiCalculator = new RSI();
 const emaCalculator = new EMA();
 const smaCalculator = new SMA();
 const macdCalculator = new MACD();
+
+const alertEngine = new AlertEngine(showNotification, (event, data) => eventBus.publish(event, data));
 
 let db = null;
 let appLogger = null;
@@ -267,6 +271,7 @@ eventBus.subscribe('market.candle.v1', async (candle) => {
   });
 
   evaluateActiveRules(symbol, tf, tabId, candle.isHistorical);
+  evaluateCustomStrategies(symbol, tf, tabId, candle.isHistorical);
 
   // If this is a raw tick, aggregate it into a 1-minute OHLC candle and publish it too!
   if (tf === 'tick') {
@@ -449,6 +454,29 @@ function evaluateActiveRules(symbol, timeframe, tabId, isHistorical) {
           provider: latestCandle.provider
         });
       }
+    }
+  });
+}
+
+function evaluateCustomStrategies(symbol, timeframe, tabId, isHistorical) {
+  if (isHistorical) return; // Skip evaluation for historical backfilled candles
+
+  const candleKey = `${tabId}_${symbol}_${timeframe}`;
+  const tickKey = `${tabId}_${symbol}_tick`;
+  const cache = candleCache[candleKey];
+  const ticks = candleCache[tickKey] || [];
+
+  if (!cache || cache.length === 0) return;
+
+  chrome.storage.local.get(['activeStrategies', 'settings'], (res) => {
+    const activeStrategies = res.activeStrategies || {};
+    const settings = res.settings || {};
+
+    try {
+      const consensusResult = ConsensusEngine.evaluate(cache, ticks, activeStrategies);
+      alertEngine.process(tabId, symbol, timeframe, consensusResult, settings);
+    } catch (err) {
+      console.error(`[ConsensusEngine] Error running consensus:`, err);
     }
   });
 }

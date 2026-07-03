@@ -61,9 +61,9 @@ export async function runDiscovery() {
 
   // 3. Confidence score estimation
   let score = 0.2;
-  const hostname = globals.hostname.toLowerCase();
+  const hostname = (globals && globals.hostname) ? globals.hostname.toLowerCase() : '';
   
-  if (hostname.includes('qxbroker') || hostname.includes('quotex')) {
+  if (hostname && (hostname.includes('qxbroker') || hostname.includes('quotex'))) {
     score += 0.3;
   }
   if (report.chartEngine === 'PixiJS') {

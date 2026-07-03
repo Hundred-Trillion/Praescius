@@ -65,13 +65,7 @@
         "plugins/**/*"
       ],
       "matches": [
-        "https://qxbroker.com/*",
-        "https://*.qxbroker.com/*",
-        "https://*.binance.com/*",
-        "https://*.tradingview.com/*",
-        "https://*.pocketoption.com/*",
-        "https://*.po.trade/*",
-        "https://*.bybit.com/*"
+        "<all_urls>"
       ]
     }
   ],

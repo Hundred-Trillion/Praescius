@@ -5,6 +5,7 @@
 
 import { initDB, getCandles, clearDatabase } from '../storage/db.js';
 import { AppLogger } from '../core/logger.js';
+import { STRATEGIES } from '../strategies/index.js';
 
 let db = null;
 let appLogger = null;
@@ -70,6 +71,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Render rules
   renderRules();
+
+  // Render custom strategies
+  renderStrategies();
 
   // Listen to message broadcasts from service worker
   chrome.runtime.onMessage.addListener((message) => {
@@ -738,5 +742,60 @@ function initJSONLExtraction() {
     } catch (err) {
       alert(`Extraction failed: ${err.message}`);
     }
+  });
+}
+
+function renderStrategies() {
+  const container = document.getElementById('strategies-list');
+  if (!container) return;
+
+  chrome.storage.local.get(['activeStrategies'], (res) => {
+    const activeStrategies = res.activeStrategies || {};
+    
+    container.innerHTML = '';
+    
+    const strategyEntries = Object.entries(STRATEGIES);
+    if (strategyEntries.length === 0) {
+      container.innerHTML = '<div class="center-text">No custom strategies loaded.</div>';
+      return;
+    }
+
+    strategyEntries.forEach(([name, strategy]) => {
+      const active = !!activeStrategies[name];
+      
+      const item = document.createElement('div');
+      item.className = 'list-item';
+      
+      item.innerHTML = `
+        <div class="item-main">
+          <div class="item-title">${name}</div>
+          <div class="item-desc">${strategy.description}</div>
+        </div>
+        <div class="item-action">
+          <label class="switch">
+            <input type="checkbox" class="strategy-toggle" data-strategy="${name}" ${active ? 'checked' : ''}>
+            <span class="slider"></span>
+          </label>
+        </div>
+      `;
+      
+      container.appendChild(item);
+    });
+
+    // Add change listeners to toggles
+    container.querySelectorAll('.strategy-toggle').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const name = e.target.getAttribute('data-strategy');
+        const checked = e.target.checked;
+        
+        chrome.storage.local.get(['activeStrategies'], (storageRes) => {
+          const current = storageRes.activeStrategies || {};
+          current[name] = checked;
+          chrome.storage.local.set({ activeStrategies: current }, () => {
+            console.log(`[Strategies] ${name} active state set to: ${checked}`);
+          });
+        });
+      });
+    });
   });
 }
