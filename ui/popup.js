@@ -542,76 +542,27 @@ async function handleClearDB() {
 // Instant AI Config Auto-Saver
 // ----------------------------------------------------
 function initInstantAIConfig() {
-  const providerSelect = document.getElementById('popup-ai-provider');
   const keyInput = document.getElementById('popup-api-key');
-  const keyContainer = document.getElementById('popup-api-key-container');
-
-  if (!providerSelect || !keyInput || !keyContainer) return;
+  if (!keyInput) return;
 
   // Load existing settings
   chrome.storage.local.get(['settings'], (res) => {
-    const settings = res.settings || {
-      aiProvider: 'local',
-      geminiKey: '',
-      openaiKey: ''
-    };
-
-    providerSelect.value = settings.aiProvider || 'local';
-    
-    // Toggle key input container
-    if (settings.aiProvider === 'gemini') {
-      keyContainer.style.display = 'flex';
-      keyInput.value = settings.geminiKey || '';
-      keyInput.placeholder = 'Enter Gemini API Key';
-    } else if (settings.aiProvider === 'openai') {
-      keyContainer.style.display = 'flex';
-      keyInput.value = settings.openaiKey || '';
-      keyInput.placeholder = 'Enter OpenAI API Key';
-    } else {
-      keyContainer.style.display = 'none';
-      keyInput.value = '';
-    }
-  });
-
-  // Handle provider changes
-  providerSelect.addEventListener('change', () => {
-    const provider = providerSelect.value;
-    chrome.storage.local.get(['settings'], (res) => {
-      const settings = res.settings || {};
-      settings.aiProvider = provider;
-      
-      if (provider === 'gemini') {
-        keyContainer.style.display = 'flex';
-        keyInput.value = settings.geminiKey || '';
-        keyInput.placeholder = 'Enter Gemini API Key';
-      } else if (provider === 'openai') {
-        keyContainer.style.display = 'flex';
-        keyInput.value = settings.openaiKey || '';
-        keyInput.placeholder = 'Enter OpenAI API Key';
-      } else {
-        keyContainer.style.display = 'none';
-        keyInput.value = '';
-      }
-
+    const settings = res.settings || {};
+    // Ensure gemini is default
+    if (settings.aiProvider !== 'gemini') {
+      settings.aiProvider = 'gemini';
       chrome.storage.local.set({ settings });
-    });
+    }
+    keyInput.value = settings.geminiKey || '';
   });
 
   // Handle key input changes
   keyInput.addEventListener('input', () => {
-    const provider = providerSelect.value;
     const key = keyInput.value.trim();
-
     chrome.storage.local.get(['settings'], (res) => {
       const settings = res.settings || {};
-      settings.aiProvider = provider;
-
-      if (provider === 'gemini') {
-        settings.geminiKey = key;
-      } else if (provider === 'openai') {
-        settings.openaiKey = key;
-      }
-
+      settings.aiProvider = 'gemini';
+      settings.geminiKey = key;
       chrome.storage.local.set({ settings });
     });
   });

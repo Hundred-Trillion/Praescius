@@ -416,7 +416,7 @@ chrome.runtime.onInstalled.addListener(async () => {
       if (!res.settings) {
         chrome.storage.local.set({
           settings: {
-            aiProvider: 'local',
+            aiProvider: 'gemini',
             geminiKey: '',
             openaiKey: '',
             notificationsEnabled: true,
