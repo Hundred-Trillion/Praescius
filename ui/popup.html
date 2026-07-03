@@ -31,6 +31,28 @@
 
   <!-- Tab 1: Dashboard Content -->
   <section id="tab-dashboard" class="tab-content active">
+    <!-- Instant AI Engine Settings -->
+    <div class="glass-panel" id="api-config-panel">
+      <h2>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+        Instant AI Engine Settings
+      </h2>
+      <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="color: var(--text-muted);">AI Provider:</span>
+          <select id="popup-ai-provider" class="text-input" style="width: 160px; padding: 2px 6px; font-size: 0.8rem; height: 26px; margin: 0; background: rgba(20, 20, 25, 0.7); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 4px; outline: none; cursor: pointer;">
+            <option value="local">Local Compiler</option>
+            <option value="gemini">Gemini AI</option>
+            <option value="openai">OpenAI GPT</option>
+          </select>
+        </div>
+        <div id="popup-api-key-container" style="display: flex; justify-content: space-between; align-items: center; display: none;">
+          <span style="color: var(--text-muted);">API Key:</span>
+          <input type="password" id="popup-api-key" class="text-input" placeholder="Enter API Key" style="width: 160px; padding: 2px 6px; font-size: 0.8rem; height: 26px; margin: 0; background: rgba(20, 20, 25, 0.7); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 4px; outline: none;">
+        </div>
+      </div>
+    </div>
+
     <!-- Discovery Status -->
     <div class="glass-panel" id="discovery-panel">
       <h2>
@@ -86,19 +108,19 @@
       </div>
     </div>
 
-    <!-- AI Rule Prompt System -->
+    <!-- Set Rule to Notify Panel -->
     <div class="glass-panel">
       <h2>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-        AI Rule Prompt System
+        Set Rule to Notify
       </h2>
       <div class="input-container">
-        <label for="prompt-input">Command (Natural Language)</label>
-        <textarea id="prompt-input" class="text-input" rows="2" placeholder="e.g. Notify me if BTC makes three bullish candles and RSI exceeds 70" style="resize: none;"></textarea>
+        <label for="prompt-input">Alert Condition / Notification Rule</label>
+        <textarea id="prompt-input" class="text-input" rows="2" placeholder="e.g. Notify me when BTC price exceeds 95000" style="resize: none;"></textarea>
       </div>
       <button id="btn-create-rule" class="btn" style="width: 100%;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        Compile & Save Rule
+        Set Notification Rule
       </button>
       <div id="prompt-status" style="margin-top: 8px; font-size: 0.75rem; display: none;"></div>
     </div>
