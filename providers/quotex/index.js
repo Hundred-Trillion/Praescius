@@ -115,6 +115,54 @@ export class QuotexProvider extends BaseProvider {
 
       if (!parsed) return this.fallbackRegex(messageBody);
 
+      // Handle raw positional array tuple directly (like [["ATOUSD_otc",1783090072.115,1.5095,0]])
+      if (Array.isArray(parsed)) {
+        let first = parsed;
+        if (Array.isArray(parsed[0])) {
+          first = parsed[0];
+        }
+        if (first.length >= 3 && typeof first[0] === 'string' && typeof first[1] === 'number' && typeof first[2] === 'number') {
+          const rawSymbol = first[0];
+          const symbol = this.formatSymbol(rawSymbol);
+          this.currentSymbol = symbol;
+
+          let timestamp = Date.now();
+          let price = 0;
+
+          if (first[1] > 100000000) {
+            timestamp = first[1];
+            price = first[2];
+          } else if (first[2] > 100000000) {
+            timestamp = first[2];
+            price = first[1];
+          } else {
+            price = first[2];
+            timestamp = first[1];
+          }
+
+          if (timestamp < 9999999999) {
+            timestamp = timestamp * 1000;
+          }
+          timestamp = Number(timestamp);
+          price = Number(price);
+
+          return {
+            schema: 1,
+            provider: 'quotex',
+            symbol,
+            timestamp,
+            open: price,
+            high: price,
+            low: price,
+            close: price,
+            price: price,
+            volume: 0,
+            timeframe: 'tick',
+            source: 'quotex_binary_tuple'
+          };
+        }
+      }
+
       // Handle standard Socket.IO event array [eventName, eventData]
       if (Array.isArray(parsed) && parsed.length >= 2) {
         const [eventName, eventData] = parsed;

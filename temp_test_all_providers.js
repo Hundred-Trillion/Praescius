@@ -43,12 +43,28 @@ runTest('Quotex - Parse binary frame (Uint8Array)', () => {
   }
 });
 
+runTest('Quotex - Parse positional binary tuple frame', () => {
+  const payload = '[["ATOUSD_otc",1783090072.115,1.5095,0]]';
+  const result = quotex.parse(payload, 'incoming');
+  if (!result || result.symbol !== 'ATO/USD (OTC)' || result.price !== 1.5095 || result.timestamp !== 1783090072115) {
+    throw new Error(`Positional tuple parse failed: ${JSON.stringify(result)}`);
+  }
+});
+
 // 2. Pocket Option String & Binary test
 runTest('Pocket Option - Parse text frame', () => {
   const payload = '42["quotes",{"asset":"EURUSD","price":1.0845,"time":1719876540}]';
   const result = pocketOption.parse(payload, 'incoming');
   if (!result || result.symbol !== 'EUR/USD' || result.price !== 1.0845) {
     throw new Error(`Invalid output: ${JSON.stringify(result)}`);
+  }
+});
+
+runTest('Pocket Option - Parse positional binary tuple frame', () => {
+  const payload = '[["EURUSD", 1.0845, 1719876540]]';
+  const result = pocketOption.parse(payload, 'incoming');
+  if (!result || result.symbol !== 'EUR/USD' || result.price !== 1.0845 || result.timestamp !== 1719876540000) {
+    throw new Error(`Positional tuple parse failed: ${JSON.stringify(result)}`);
   }
 });
 

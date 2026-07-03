@@ -110,6 +110,54 @@ export class PocketOptionProvider extends BaseProvider {
       }
 
       if (!parsed) return null;
+
+      // Handle raw positional array tuple directly (like [["EURUSD", 1.0845, 1719876540]])
+      if (Array.isArray(parsed)) {
+        let first = parsed;
+        if (Array.isArray(parsed[0])) {
+          first = parsed[0];
+        }
+        if (first.length >= 3 && typeof first[0] === 'string' && typeof first[1] === 'number' && typeof first[2] === 'number') {
+          const rawSymbol = first[0];
+          const symbol = this.formatSymbol(rawSymbol);
+          this.currentSymbol = symbol;
+
+          let timestamp = Date.now();
+          let price = 0;
+
+          if (first[1] > 100000000) {
+            timestamp = first[1];
+            price = first[2];
+          } else if (first[2] > 100000000) {
+            timestamp = first[2];
+            price = first[1];
+          } else {
+            price = first[2];
+            timestamp = first[1];
+          }
+
+          if (timestamp < 9999999999) {
+            timestamp = timestamp * 1000;
+          }
+          timestamp = Number(timestamp);
+          price = Number(price);
+
+          return {
+            schema: 1,
+            provider: 'pocketoption',
+            symbol,
+            timestamp,
+            open: price,
+            high: price,
+            low: price,
+            close: price,
+            price: price,
+            volume: 0,
+            timeframe: 'tick',
+            source: 'po_binary_tuple'
+          };
+        }
+      }
       
       if (Array.isArray(parsed) && parsed.length >= 2) {
         const [eventName, eventData] = parsed;

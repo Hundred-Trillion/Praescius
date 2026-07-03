@@ -17,15 +17,18 @@ export function normalizeSymbol(rawSymbol) {
     sym = sym.split(':')[1];
   }
 
+  // Handle OTC suffix
+  let isOtc = false;
+  if (sym.endsWith('OTC') || sym.includes('/OTC') || sym.includes('-OTC') || sym.includes('_OTC')) {
+    isOtc = true;
+    sym = sym.replace(/\/OTC|-OTC|_OTC|OTC$/, '');
+  }
+
   // Remove whitespace and underscores
   sym = sym.replace(/\s+/g, '').replace(/_/g, '/');
 
-  // Handle OTC suffix
-  let isOtc = false;
-  if (sym.endsWith('OTC') || sym.includes('/OTC') || sym.includes('-OTC')) {
-    isOtc = true;
-    sym = sym.replace(/\/OTC|-OTC|OTC$/, '');
-  }
+  // Strip leading/trailing slashes before slash checks
+  sym = sym.replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
 
   // Normalize specific instruments
   if (sym === 'GOLD' || sym === 'XAUUSD' || sym === 'XAU' || sym === 'XAU/USD') {
