@@ -12,6 +12,15 @@ import { evaluateRule } from './core/evaluator.js';
 import { showNotification } from './core/notifier.js';
 import { aiManager } from './ai/aiManager.js';
 import { replayEngine } from './core/replay.js';
+import RSI from './indicators/RSI.js';
+import EMA from './indicators/EMA.js';
+import SMA from './indicators/SMA.js';
+import MACD from './indicators/MACD.js';
+
+const rsiCalculator = new RSI();
+const emaCalculator = new EMA();
+const smaCalculator = new SMA();
+const macdCalculator = new MACD();
 
 let db = null;
 let appLogger = null;
@@ -31,6 +40,13 @@ const CACHE_LIMIT = 200;
 // Rules cooldown cache
 const ruleCooldowns = {};
 const COOLDOWN_MS = 60 * 1000;
+
+// Dynamic adaptive confidences state for DOM scraped fallback channels
+const adaptiveConfidences = {
+  dom_selector: 0.8,
+  dom_title: 0.5
+};
+const latestWsPrices = {}; // Tracks latest raw WS prices to compare and calibrate DOM selectors
 
 /**
  * Open/Initialize Database layer.
@@ -64,6 +80,30 @@ eventBus.subscribe('network:parsed_candle', async (candle) => {
   const symbol = candle.symbol;
   const tf = candle.timeframe;
   const key = `${symbol}_${tf}`;
+
+  // Real-time Validation and Adaptive Confidence Scorer
+  if (candle.source && candle.source.startsWith('dom')) {
+    candle.confidence = adaptiveConfidences[candle.source] || candle.confidence || 0.8;
+    
+    const lastWs = latestWsPrices[symbol];
+    if (lastWs && (Date.now() - lastWs.timestamp < 5000)) {
+      const delta = Math.abs(lastWs.price - candle.price);
+      const pctDelta = delta / lastWs.price;
+      
+      console.log(`[Aetheris Validation] ${symbol} | WS: ${lastWs.price} | DOM: ${candle.price} | Delta: ${delta.toFixed(4)} (${(pctDelta * 100).toFixed(4)}%)`);
+      
+      if (pctDelta < 0.0005) {
+        adaptiveConfidences[candle.source] = Math.min(0.99, adaptiveConfidences[candle.source] + 0.001);
+      } else if (pctDelta > 0.005) {
+        adaptiveConfidences[candle.source] = Math.max(0.1, adaptiveConfidences[candle.source] - 0.01);
+      }
+    }
+  } else {
+    latestWsPrices[symbol] = {
+      price: candle.price,
+      timestamp: Date.now()
+    };
+  }
 
   if (appLogger) {
     await appLogger.logTickComparison(symbol, candle.price, candle.source || 'ws', candle.confidence || 1.0);
@@ -148,13 +188,68 @@ function evaluateActiveRules(symbol, timeframe) {
         const confidence = latestCandle.confidence || 1.0;
         const trend = latestPrice > cache[cache.length - 5].close ? 'bullish' : 'bearish';
         
+        let rsi = null;
+        let ema9 = null;
+        let ema21 = null;
+        let sma20 = null;
+        let macd = null;
+
+        try {
+          const rsiVals = rsiCalculator.calculate(cache, { period: 14 });
+          const r = rsiVals[rsiVals.length - 1];
+          if (typeof r === 'number') rsi = Number(r.toFixed(2));
+        } catch (e) {}
+
+        try {
+          const ema9Vals = emaCalculator.calculate(cache, { period: 9 });
+          const e9 = ema9Vals[ema9Vals.length - 1];
+          if (typeof e9 === 'number') ema9 = Number(e9.toFixed(2));
+        } catch (e) {}
+
+        try {
+          const ema21Vals = emaCalculator.calculate(cache, { period: 21 });
+          const e21 = ema21Vals[ema21Vals.length - 1];
+          if (typeof e21 === 'number') ema21 = Number(e21.toFixed(2));
+        } catch (e) {}
+
+        try {
+          const sma20Vals = smaCalculator.calculate(cache, { period: 20 });
+          const s20 = sma20Vals[sma20Vals.length - 1];
+          if (typeof s20 === 'number') sma20 = Number(s20.toFixed(2));
+        } catch (e) {}
+
+        try {
+          const macdVals = macdCalculator.calculate(cache);
+          const mObj = macdVals[macdVals.length - 1];
+          if (mObj && typeof mObj.macd === 'number') {
+            macd = {
+              macd: Number(mObj.macd.toFixed(4)),
+              signal: Number(mObj.signal.toFixed(4)),
+              histogram: Number(mObj.histogram.toFixed(4))
+            };
+          }
+        } catch (e) {}
+
         const summary = {
           symbol,
           trend,
           triggerRule: rule.name,
           lastPrice: latestPrice,
           confidence: confidence,
-          timestamp: now
+          timestamp: now,
+          context: {
+            last20Ticks: cache.slice(-20).map(c => ({
+              t: Math.floor(c.timestamp / 1000),
+              p: c.price,
+              src: c.source || 'ws',
+              conf: Number(c.confidence || 1.0)
+            })),
+            rsi,
+            ema9,
+            ema21,
+            sma20,
+            macd
+          }
         };
 
         const provider = settings.aiProvider || 'local';
@@ -248,6 +343,8 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
         const domPrice = Number(message.price);
         const domSymbol = message.symbol || 'EUR/USD';
         const domTimestamp = Number(message.timestamp || Date.now());
+        const domSource = message.source || 'dom_selector';
+        const domConfidence = Number(message.confidence || 0.8);
         
         const domCandle = {
           schema: 1,
@@ -261,11 +358,22 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
           price: domPrice,
           volume: 0,
           timeframe: 'tick',
-          source: 'dom_fallback'
+          source: domSource,
+          confidence: domConfidence
         };
         
         eventBus.publish('network:parsed_candle', domCandle);
         sendResponse({ success: true });
+        break;
+
+      case 'GET_PROVIDER_SELECTORS':
+        const requestUrl = message.url;
+        const matchingProvider = providerManager.providers.find(p => p.matches(requestUrl, ''));
+        if (matchingProvider) {
+          sendResponse({ success: true, selectors: matchingProvider.selectors || [] });
+        } else {
+          sendResponse({ success: false, selectors: [] });
+        }
         break;
 
       case 'DISCOVERY_REPORT':

@@ -9,6 +9,7 @@ export class MT5Provider extends BaseProvider {
   constructor() {
     super('mt5');
     this.currentSymbol = 'EURUSD';
+    this.selectors = ['[class*="bid-price"]', '[class*="ask-price"]', '.price-text'];
   }
 
   matches(url, title) {

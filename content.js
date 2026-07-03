@@ -16,6 +16,18 @@ try {
 // 2. Listen to postMessage frames and relay to service worker
 let lastWsMessageTime = Date.now();
 let lastDomPrice = null;
+let activeSelectors = [];
+
+// Request provider selectors on startup
+chrome.runtime.sendMessage({
+  action: 'GET_PROVIDER_SELECTORS',
+  url: window.location.href
+}, (response) => {
+  if (response && response.success && Array.isArray(response.selectors)) {
+    activeSelectors = response.selectors;
+    console.log('[Aetheris Content] Loaded dynamic selectors from background:', activeSelectors);
+  }
+});
 
 window.addEventListener('message', (event) => {
   if (event.source !== window) return;
@@ -53,27 +65,50 @@ window.addEventListener('message', (event) => {
 });
 
 // 3. Periodic DOM Scraping Fallback
+let lastPrice = null;
+let lastUpdate = Date.now();
+let unchangedCount = 0;
+let isStale = false;
+
 setInterval(() => {
   const wsIdleTime = Date.now() - lastWsMessageTime;
   
-  // If no WS frames received in the last 4 seconds, activate DOM fallback
   if (wsIdleTime > 4000) {
     const scraped = scrapeCurrentPageDOM();
-    if (scraped && scraped.price && scraped.price !== lastDomPrice) {
-      lastDomPrice = scraped.price;
-      
-      console.log('[Aetheris DOM Fallback] Scraped Price:', scraped.price, 'Symbol:', scraped.symbol);
-      
-      chrome.runtime.sendMessage({
-        action: 'DOM_TICK',
-        price: scraped.price,
-        symbol: scraped.symbol || 'UNKNOWN',
-        timestamp: Date.now()
-      }, () => {
-        if (chrome.runtime.lastError) {
-          // ignore
+    if (scraped && scraped.price) {
+      const now = Date.now();
+      if (scraped.price === lastPrice) {
+        unchangedCount++;
+        if (unchangedCount >= 30 && !isStale) {
+          isStale = true;
+          console.warn('[Aetheris DOM Fallback] DOM price feed is stale. No change in 30 seconds.');
+          chrome.runtime.sendMessage({
+            action: 'LOG_EVENT',
+            message: `DOM price feed is stale for symbol ${scraped.symbol}. Price remained at ${scraped.price} for 30s.`,
+            type: 'warning'
+          }, () => { if (chrome.runtime.lastError) {} });
         }
-      });
+      } else {
+        isStale = false;
+        unchangedCount = 0;
+        lastPrice = scraped.price;
+        lastUpdate = now;
+        
+        console.log('[Aetheris DOM Fallback] Scraped Price:', scraped.price, 'Symbol:', scraped.symbol, 'Confidence:', scraped.confidence);
+        
+        chrome.runtime.sendMessage({
+          action: 'DOM_TICK',
+          price: scraped.price,
+          symbol: scraped.symbol || 'UNKNOWN',
+          source: scraped.source,
+          confidence: scraped.confidence,
+          timestamp: now
+        }, () => {
+          if (chrome.runtime.lastError) {
+            // ignore
+          }
+        });
+      }
     }
   }
 }, 1000);
@@ -86,32 +121,20 @@ function scrapeCurrentPageDOM() {
   let source = 'dom_selector';
   let confidence = 0.8;
 
-  // 1. Try page-specific selector scraping
+  // 1. Try page-specific selector scraping using selectors from background
   try {
-    if (url.includes('tradingview.com')) {
-      const el = document.querySelector('.chart-markup-table div.price, span[class*="last-value-"], div[class*="selected-value-"]');
-      if (el) price = parseFloat(el.textContent.replace(/,/g, ''));
-    } else if (url.includes('qxbroker') || url.includes('quotex')) {
-      const el = document.querySelector('.chart-legend__price, .value__price, .current-price');
-      if (el) price = parseFloat(el.textContent.replace(/,/g, ''));
-    } else if (url.includes('binance.com')) {
-      const el = document.querySelector('.showPrice, .price, div[class*="priceText"]');
-      if (el) price = parseFloat(el.textContent.replace(/,/g, ''));
-    } else if (url.includes('deriv.com') || url.includes('deriv.app')) {
-      const el = document.querySelector('.cq-current-price, .chart-container-current-price');
-      if (el) price = parseFloat(el.textContent.replace(/,/g, ''));
-    } else if (url.includes('pocketoption') || url.includes('po.trade')) {
-      const el = document.querySelector('.price-value, div[class*="current-price"]');
-      if (el) price = parseFloat(el.textContent.replace(/,/g, ''));
-    } else if (url.includes('bybit.com')) {
-      const el = document.querySelector('[class*="price-value"], [class*="last-price"]');
-      if (el) price = parseFloat(el.textContent.replace(/,/g, ''));
-    } else if (url.includes('okx.com')) {
-      const el = document.querySelector('[class*="index-price"], .price-text');
-      if (el) price = parseFloat(el.textContent.replace(/,/g, ''));
-    } else if (url.includes('metatrader') || title.toLowerCase().includes('mt5')) {
-      const el = document.querySelector('[class*="bid-price"], [class*="ask-price"], .price-text');
-      if (el) price = parseFloat(el.textContent.replace(/,/g, ''));
+    for (const selector of activeSelectors) {
+      const el = document.querySelector(selector);
+      if (el) {
+        const text = el.textContent.replace(/,/g, '').trim();
+        const val = parseFloat(text);
+        if (!isNaN(val) && val > 0) {
+          price = val;
+          source = 'dom_selector';
+          confidence = 0.8;
+          break;
+        }
+      }
     }
   } catch (err) {
     // selector error

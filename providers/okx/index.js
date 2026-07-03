@@ -9,6 +9,7 @@ export class OKXProvider extends BaseProvider {
   constructor() {
     super('okx');
     this.currentSymbol = 'BTC/USDT';
+    this.selectors = ['[class*="index-price"]', '.price-text'];
   }
 
   matches(url, title) {

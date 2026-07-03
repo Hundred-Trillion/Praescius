@@ -6,6 +6,7 @@
 export class BaseProvider {
   constructor(name) {
     this.name = name;
+    this.selectors = [];
   }
 
   /**

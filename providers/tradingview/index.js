@@ -9,6 +9,7 @@ export class TradingViewProvider extends BaseProvider {
   constructor() {
     super('tradingview');
     this.currentSymbol = 'BTC/USD';
+    this.selectors = ['.chart-markup-table div.price', 'span[class*="last-value-"]', 'div[class*="selected-value-"]'];
   }
 
   matches(url, title) {

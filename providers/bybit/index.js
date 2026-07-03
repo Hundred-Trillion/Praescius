@@ -9,6 +9,7 @@ export class BybitProvider extends BaseProvider {
   constructor() {
     super('bybit');
     this.currentSymbol = 'BTC/USDT';
+    this.selectors = ['[class*="price-value"]', '[class*="last-price"]'];
   }
 
   matches(url, title) {

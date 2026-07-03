@@ -9,6 +9,7 @@ export class PocketOptionProvider extends BaseProvider {
   constructor() {
     super('pocketoption');
     this.currentSymbol = 'EUR/USD';
+    this.selectors = ['.price-value', 'div[class*="current-price"]'];
   }
 
   matches(url, title) {

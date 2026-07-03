@@ -83,8 +83,8 @@ export class OpenAIClass extends BaseAI {
     const url = 'https://api.openai.com/v1/chat/completions';
     
     const instruction = `
-You are a trading notification formatter. You will receive a JSON technical summary of a triggered trading alert.
-Generate a highly professional, natural language alert notification message of less than 20 words for a trader. Include the symbol and price. Output ONLY the raw text message. Do not include markdown code block syntax.
+You are an expert trading assistant. You will receive a JSON technical summary of a triggered trading alert, containing the triggered rule, the symbol, the price, and a compact context window of indicators (RSI, EMA, SMA, MACD) and recent ticks.
+Generate a highly professional, concise natural language alert notification message of less than 25 words. Summarize why the alert triggered, mention the price, and give a brief observation of the trend based on the context indicators. Output ONLY the raw text message. Do not include markdown code block syntax.
 `;
 
     const payload = {

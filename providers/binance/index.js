@@ -9,6 +9,7 @@ export class BinanceProvider extends BaseProvider {
   constructor() {
     super('binance');
     this.currentSymbol = 'BTC/USDT';
+    this.selectors = ['.showPrice', '.price', 'div[class*="priceText"]'];
   }
 
   matches(url, title) {

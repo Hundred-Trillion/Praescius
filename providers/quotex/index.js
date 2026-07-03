@@ -9,6 +9,7 @@ export class QuotexProvider extends BaseProvider {
   constructor() {
     super('quotex');
     this.currentSymbol = 'BTC/USD';
+    this.selectors = ['.chart-legend__price', '.value__price', '.current-price'];
   }
 
   matches(url, title) {

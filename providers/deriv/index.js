@@ -9,6 +9,7 @@ export class DerivProvider extends BaseProvider {
   constructor() {
     super('deriv');
     this.currentSymbol = 'R_100';
+    this.selectors = ['.cq-current-price', '.chart-container-current-price'];
   }
 
   matches(url, title) {
