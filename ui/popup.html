@@ -196,6 +196,16 @@
         JSONL Data Extraction
       </h2>
       <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 10px;">
+
+        <!-- Timeframe Type Filter -->
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">
+          <span style="color: var(--text-muted); font-size: 0.75rem; font-weight: bold;">Export Timeframe:</span>
+          <select id="extract-tf-filter" class="text-input" style="width: 140px; padding: 2px 6px; font-size: 0.75rem; height: 26px; margin: 0; background: rgba(20, 20, 25, 0.7); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 4px; outline: none; cursor: pointer;">
+            <option value="both">Both Ticks & 1m</option>
+            <option value="tick">Raw Ticks Only (tf: tick)</option>
+            <option value="1m">1m Candles Only (tf: 1m)</option>
+          </select>
+        </div>
         
         <!-- Live Stream Capture (Start/Stop) -->
         <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 4px;">

@@ -503,10 +503,19 @@ function renderRules() {
 async function triggerExport(format) {
   try {
     const store = await getUIStore();
-    const candles = await getCandles(store, null, null, 10000);
+    let candles = await getCandles(store, null, null, 100000);
+
+    // Apply timeframe filter
+    const tfFilter = document.getElementById('extract-tf-filter');
+    const tfVal = tfFilter ? tfFilter.value : 'both';
+    if (tfVal === 'tick') {
+      candles = candles.filter(c => c.timeframe === 'tick');
+    } else if (tfVal === '1m') {
+      candles = candles.filter(c => c.timeframe === '1m');
+    }
 
     if (candles.length === 0) {
-      alert('No candles in database to export.');
+      alert('No candles in database matching timeframe criteria to export.');
       return;
     }
 
@@ -580,6 +589,7 @@ function initJSONLExtraction() {
   const statusEl = document.getElementById('capture-status');
   const btnExtract = document.getElementById('btn-extract-jsonl');
   const extractWindow = document.getElementById('extract-window');
+  const tfFilter = document.getElementById('extract-tf-filter');
 
   if (!btnStart || !btnStop || !statusEl || !btnExtract) return;
 
@@ -642,8 +652,16 @@ function initJSONLExtraction() {
         // Filter candles by the exact captured window
         candles = candles.filter(c => c.timestamp >= startTime && c.timestamp <= stopTime);
 
+        // Apply timeframe filter
+        const tfVal = tfFilter ? tfFilter.value : 'both';
+        if (tfVal === 'tick') {
+          candles = candles.filter(c => c.timeframe === 'tick');
+        } else if (tfVal === '1m') {
+          candles = candles.filter(c => c.timeframe === '1m');
+        }
+
         if (candles.length === 0) {
-          alert('No candles were recorded during the capture window.');
+          alert('No candles matching timeframe criteria were recorded during the capture window.');
           return;
         }
 
@@ -688,8 +706,16 @@ function initJSONLExtraction() {
         candles = candles.filter(c => c.timestamp >= minTimestamp);
       }
 
+      // Apply timeframe filter
+      const tfVal = tfFilter ? tfFilter.value : 'both';
+      if (tfVal === 'tick') {
+        candles = candles.filter(c => c.timeframe === 'tick');
+      } else if (tfVal === '1m') {
+        candles = candles.filter(c => c.timeframe === '1m');
+      }
+
       if (candles.length === 0) {
-        alert('No candles in database for the selected time window.');
+        alert('No candles in database matching timeframe criteria for the selected time window.');
         return;
       }
 
