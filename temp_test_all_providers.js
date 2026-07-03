@@ -181,5 +181,21 @@ runTest('TradingView - Parse historical multi-candle update', () => {
   // Note: the test suite calls parse directly, which returns the latest candle.
 });
 
+runTest('TradingView - Parse qsd updates (active chart vs watchlist)', () => {
+  // 1. Watchlist update (BTCUSDT) should be ignored when active chart is ETH/USDT
+  const btcPayload = '~m~150~m~{"m":"qsd","p":["qse_1",{"n":"BINANCE:BTCUSDT","v":{"lp":68120.50}}]}';
+  const btcResult = tradingview.parse(btcPayload, 'incoming');
+  if (btcResult !== null) {
+    throw new Error(`Watchlist quote update was not ignored: ${JSON.stringify(btcResult)}`);
+  }
+
+  // 2. Active chart update (ETHUSDT) should be parsed
+  const ethPayload = '~m~150~m~{"m":"qsd","p":["qse_1",{"n":"BINANCE:ETHUSDT","v":{"lp":3510.50}}]}';
+  const ethResult = tradingview.parse(ethPayload, 'incoming');
+  if (!ethResult || ethResult.symbol !== 'ETH/USDT' || ethResult.price !== 3510.50) {
+    throw new Error(`Active chart quote update failed to parse: ${JSON.stringify(ethResult)}`);
+  }
+});
+
 console.log(`\n=== SCENARIO VERIFICATION COMPLETE (FAILED: ${failed}) ===`);
 process.exit(failed > 0 ? 1 : 0);

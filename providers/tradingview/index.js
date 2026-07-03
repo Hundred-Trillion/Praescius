@@ -134,7 +134,8 @@ export class TradingViewProvider extends BaseProvider {
                 const symbol = this.formatSymbol(quoteData.n || parsed.p[0]);
                 if (this.isMetadataSymbol(symbol)) continue;
 
-                this.currentSymbol = symbol;
+                if (symbol !== this.currentSymbol) continue;
+
                 const price = Number(quoteData.v.lp || quoteData.v.ask || quoteData.v.bid);
                 if (isNaN(price)) continue;
                 
