@@ -57,6 +57,52 @@ function evaluateCondition(candles, cond) {
       return checkPattern(candles, cond.pattern);
     }
 
+    // Candle geometry checks
+    if (cond.indicator === 'Candle') {
+      const resolveProperty = (c, prop) => {
+        const open = c.open;
+        const close = c.close;
+        const high = c.high;
+        const low = c.low;
+        const totalRange = high - low;
+        const bodyLen = Math.abs(close - open);
+        const maxBody = Math.max(open, close);
+        const minBody = Math.min(open, close);
+        const upperWickLen = high - maxBody;
+        const lowerWickLen = minBody - low;
+
+        switch (prop) {
+          case 'open': return open;
+          case 'close': return close;
+          case 'high': return high;
+          case 'low': return low;
+          case 'body': return bodyLen;
+          case 'upperWick': return upperWickLen;
+          case 'lowerWick': return lowerWickLen;
+          case 'upperWickRatio': return totalRange > 0 ? (upperWickLen / totalRange) : 0;
+          case 'lowerWickRatio': return totalRange > 0 ? (lowerWickLen / totalRange) : 0;
+          case 'bodyRatio': return totalRange > 0 ? (bodyLen / totalRange) : 0;
+          case 'isBearish': return close < open ? 1 : 0;
+          case 'isBullish': return close > open ? 1 : 0;
+          default: return 0;
+        }
+      };
+
+      const val1 = resolveProperty(current, cond.property);
+
+      let val2 = cond.value;
+      if (typeof val2 === 'string') {
+        if (['open', 'close', 'high', 'low', 'body', 'upperWick', 'lowerWick'].includes(val2)) {
+          val2 = resolveProperty(current, val2);
+        } else {
+          const parsedVal = parseFloat(val2);
+          if (!isNaN(parsedVal)) val2 = parsedVal;
+        }
+      }
+
+      return compare(val1, cond.operator, val2, candles);
+    }
+
     // Price threshold checks
     if (cond.indicator === 'Price') {
       if (cond.operator === 'crossover_above' || cond.operator === 'crossover_below') {

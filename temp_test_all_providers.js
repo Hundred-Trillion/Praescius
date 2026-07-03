@@ -3,6 +3,7 @@ import { BinanceProvider } from './providers/binance/index.js';
 import { TradingViewProvider } from './providers/tradingview/index.js';
 import { PocketOptionProvider } from './providers/pocketoption/index.js';
 import { BybitProvider } from './providers/bybit/index.js';
+import { evaluateRule } from './core/evaluator.js';
 
 let failed = 0;
 console.log('=== STARTING ALL SCOPED PROVIDERS PARSER VERIFICATION ===\n');
@@ -194,6 +195,58 @@ runTest('TradingView - Parse qsd updates (active chart vs watchlist)', () => {
   const ethResult = tradingview.parse(ethPayload, 'incoming');
   if (!ethResult || ethResult.symbol !== 'ETH/USDT' || ethResult.price !== 3510.50) {
     throw new Error(`Active chart quote update failed to parse: ${JSON.stringify(ethResult)}`);
+  }
+});
+
+runTest('Evaluator - Candle Geometry checks (wick ratio, close vs open)', () => {
+  const candles = [
+    {
+      open: 100,
+      high: 150,
+      low: 80,
+      close: 90, // Bearish: close < open. body = 10, totalRange = 70.
+      // upperWick = high - max(open, close) = 150 - 100 = 50. upperWickRatio = 50 / 70 = 0.714 (71.4% > 50%)
+      timestamp: Date.now()
+    }
+  ];
+
+  const rule = {
+    name: 'Test rule',
+    operator: 'AND',
+    conditions: [
+      {
+        indicator: 'Candle',
+        property: 'upperWickRatio',
+        operator: '>',
+        value: 0.5
+      },
+      {
+        indicator: 'Candle',
+        property: 'close',
+        operator: '<',
+        value: 'open'
+      }
+    ]
+  };
+
+  const matched = evaluateRule(candles, rule);
+  if (!matched) {
+    throw new Error('Candle geometry evaluation failed to match a valid bearish pinbar.');
+  }
+
+  // Verify that a bullish candle fails
+  const invalidCandles = [
+    {
+      open: 100,
+      high: 110,
+      low: 95,
+      close: 105, // Bullish
+      timestamp: Date.now()
+    }
+  ];
+  const matchedInvalid = evaluateRule(invalidCandles, rule);
+  if (matchedInvalid) {
+    throw new Error('Candle geometry evaluation falsely matched a bullish candle.');
   }
 });
 

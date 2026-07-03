@@ -14,21 +14,60 @@ You must output ONLY valid JSON matching this schema:
   "conditions": [
     {
       "indicator": "Price" | "RSI" | "SMA" | "EMA",
-      "period": number (optional),
+      "period": number (optional, e.g. 14 for RSI/SMA),
       "operator": ">" | "<" | ">=" | "<=" | "==" | "crossover_above" | "crossover_below",
       "value": number
     },
-    ... or ...
+    {
+      "indicator": "Candle",
+      "property": "open" | "close" | "high" | "low" | "body" | "upperWick" | "lowerWick" | "upperWickRatio" | "lowerWickRatio" | "bodyRatio" | "isBearish" | "isBullish",
+      "operator": ">" | "<" | ">=" | "<=" | "==",
+      "value": number (e.g. 0.5 for 50%) or string property name (e.g. "open", "close")
+    },
     {
       "pattern": "Three Bullish Candles" | "Three Bearish Candles" | "Bullish Engulfing" | "Bearish Engulfing" | "Doji" | "Hammer"
     }
   ]
 }
 
-Supported Indicators: Price, RSI, SMA, EMA.
-Supported Operators: ">", "<", ">=", "<=", "==", "crossover_above", "crossover_below".
-Supported Patterns: "Three Bullish Candles", "Three Bearish Candles", "Bullish Engulfing", "Bearish Engulfing", "Doji", "Hammer".
-Logical Operators: "AND", "OR", "NOT".
+Supported Indicators:
+- Price: checks the latest close price.
+- RSI: checks Relative Strength Index. Can accept a "period" (default 14).
+- SMA: checks Simple Moving Average. Requires a "period".
+- EMA: checks Exponential Moving Average. Requires a "period".
+- Candle: checks specific properties or geometries of the current candlestick.
+  - "open", "close", "high", "low" (absolute price values of the candle)
+  - "body" (absolute size of the candle body: |close - open|)
+  - "upperWick" (absolute size of upper wick: high - max(open, close))
+  - "lowerWick" (absolute size of lower wick: min(open, close) - low)
+  - "upperWickRatio" (upper wick size divided by total range high-low, e.g. 0.5 for 50%)
+  - "lowerWickRatio" (lower wick size divided by total range high-low)
+  - "bodyRatio" (body size divided by total range high-low)
+  - "isBearish" (1 if close < open, 0 otherwise)
+  - "isBullish" (1 if close > open, 0 otherwise)
+
+Examples for Candle indicator:
+- "close is less than open":
+  {"indicator": "Candle", "property": "close", "operator": "<", "value": "open"}
+- "upper wick is greater than 50%":
+  {"indicator": "Candle", "property": "upperWickRatio", "operator": ">", "value": 0.5}
+- "body is larger than upper wick":
+  {"indicator": "Candle", "property": "body", "operator": ">", "value": "upperWick"}
+
+Supported Patterns:
+- "Three Bullish Candles"
+- "Three Bearish Candles"
+- "Bullish Engulfing"
+- "Bearish Engulfing"
+- "Doji"
+- "Hammer"
+
+Logical Operators:
+- "AND" (default)
+- "OR"
+- "NOT"
+
+Always respond with ONLY the JSON object. Do not include markdown code block syntax.
 `;
 
 export class OpenAIClass extends BaseAI {
