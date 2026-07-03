@@ -1,0 +1,106 @@
+{
+  "manifest_version": 3,
+  "name": "Aetheris Market Observer",
+  "version": "2.0.0",
+  "description": "Extensible multi-broker market observer featuring modular plugins, Event Bus architecture, local rules engine, and AI translators.",
+  "permissions": [
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://qxbroker.com/*",
+    "https://*.qxbroker.com/*",
+    "https://*.binance.com/*",
+    "https://*.tradingview.com/*",
+    "https://*.deriv.com/*",
+    "https://*.deriv.app/*",
+    "https://*.pocketoption.com/*",
+    "https://*.po.trade/*",
+    "https://*.bybit.com/*",
+    "https://*.okx.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://qxbroker.com/*",
+        "https://*.qxbroker.com/*",
+        "https://*.binance.com/*",
+        "https://*.tradingview.com/*",
+        "https://*.deriv.com/*",
+        "https://*.deriv.app/*",
+        "https://*.pocketoption.com/*",
+        "https://*.po.trade/*",
+        "https://*.bybit.com/*",
+        "https://*.okx.com/*"
+      ],
+      "js": [
+        "inject.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://qxbroker.com/*",
+        "https://*.qxbroker.com/*",
+        "https://*.binance.com/*",
+        "https://*.tradingview.com/*",
+        "https://*.deriv.com/*",
+        "https://*.deriv.app/*",
+        "https://*.pocketoption.com/*",
+        "https://*.po.trade/*",
+        "https://*.bybit.com/*",
+        "https://*.okx.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "discovery/discovery.js",
+        "discovery/canvas.js",
+        "discovery/websocket.js",
+        "discovery/pixijs.js",
+        "discovery/storage.js",
+        "discovery/globals.js"
+      ],
+      "matches": [
+        "https://qxbroker.com/*",
+        "https://*.qxbroker.com/*",
+        "https://*.binance.com/*",
+        "https://*.tradingview.com/*",
+        "https://*.deriv.com/*",
+        "https://*.deriv.app/*",
+        "https://*.pocketoption.com/*",
+        "https://*.po.trade/*",
+        "https://*.bybit.com/*",
+        "https://*.okx.com/*"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "ui/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "ui/options.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

@@ -1,0 +1,15 @@
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620000,"o":98000,"h":98050,"l":97990,"c":98020,"v":100}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620060,"o":98020,"h":98100,"l":98010,"c":98090,"v":120}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620120,"o":98090,"h":98150,"l":98080,"c":98110,"v":110}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620180,"o":98110,"h":98120,"l":98050,"c":98060,"v":90}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620240,"o":98060,"h":98080,"l":97980,"c":98000,"v":130}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620300,"o":98000,"h":98040,"l":97950,"c":98020,"v":105}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620360,"o":98020,"h":98150,"l":98010,"c":98140,"v":140}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620420,"o":98140,"h":98250,"l":98130,"c":98230,"v":160}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620480,"o":98230,"h":98350,"l":98220,"c":98330,"v":180}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620540,"o":98330,"h":98400,"l":98310,"c":98380,"v":170}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620600,"o":98380,"h":98390,"l":98300,"c":98320,"v":115}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620660,"o":98320,"h":98480,"l":98310,"c":98460,"v":190}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620720,"o":98460,"h":98500,"l":98440,"c":98490,"v":210}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620780,"o":98490,"h":98550,"l":98470,"c":98540,"v":230}
+{"schema":1,"provider":"quotex","symbol":"BTC/USD","tf":"1m","t":1751620840,"o":98540,"h":98560,"l":98490,"c":98510,"v":150}

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Options Configuration - Aetheris Observer</title>
+  <link rel="stylesheet" href="design.css">
+  <style>
+    body {
+      min-width: 500px;
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #05070c;
+    }
+    .options-wrapper {
+      padding: 24px;
+    }
+    .section-title {
+      font-size: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+      margin-top: 24px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .control-label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      max-width: 70%;
+    }
+    .control-label span {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .control-label small {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .api-key-group {
+      display: none;
+      margin-bottom: 16px;
+    }
+    .api-key-group.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="glass-panel options-wrapper">
+    <h1 style="font-size: 1.4rem; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+      Aetheris Observer Configuration
+    </h1>
+
+    <!-- AI Engine Selection -->
+    <div class="section-title" style="margin-top: 0;">AI Translation Services</div>
+    
+    <div class="input-container" style="margin-bottom: 16px;">
+      <label for="ai-provider">Target Translation Model</label>
+      <select id="ai-provider" class="text-input" style="width: 100%;">
+        <option value="local">Local offline parser (Free - No keys required)</option>
+        <option value="gemini">Google Gemini API</option>
+        <option value="openai">OpenAI GPT-4o-mini</option>
+      </select>
+    </div>
+
+    <!-- Gemini Key -->
+    <div id="gemini-key-group" class="api-key-group">
+      <div class="input-container">
+        <label for="api-key-gemini">Google Gemini API Key</label>
+        <input type="password" id="api-key-gemini" class="text-input" placeholder="AIzaSy...">
+        <div style="background: rgba(0, 242, 254, 0.03); border: 1px solid rgba(0, 242, 254, 0.1); border-radius: 8px; padding: 12px; margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
+          <strong style="color: var(--primary); display: block; margin-bottom: 6px;">How to obtain a free Gemini API Key:</strong>
+          1. Navigate to <a href="https://aistudio.google.com/" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: 600;">Google AI Studio</a>.<br>
+          2. Sign in with your Google account.<br>
+          3. Click the blue <strong>"Get API Key"</strong> button in the top left sidebar.<br>
+          4. Click <strong>"Create API Key"</strong>, select/create a project, and copy your key.<br>
+          5. Paste the key in the input box above and click <strong>"Save Configuration"</strong>.<br>
+          <span style="display: block; margin-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 6px; font-style: italic;">
+            Note: The extension uses the <strong>gemini-1.5-flash</strong> model on the Free Tier (includes 15 RPM / 1,500 RPD limits), which is completely free of charge and ideal for natural language rule translations.
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- OpenAI Key -->
+    <div id="openai-key-group" class="api-key-group">
+      <div class="input-container">
+        <label for="api-key-openai">OpenAI API Key</label>
+        <input type="password" id="api-key-openai" class="text-input" placeholder="sk-proj-...">
+        <span style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
+          Requires standard API balance credits. Key is stored locally.
+        </span>
+      </div>
+    </div>
+
+    <!-- Execution Parameters -->
+    <div class="section-title">System Settings</div>
+
+    <!-- Notifications -->
+    <div class="control-row">
+      <div class="control-label">
+        <span>Desktop Notifications</span>
+        <small>Show native notifications when compiled technical rules trigger.</small>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggle-notifications" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Logging -->
+    <div class="control-row">
+      <div class="control-label">
+        <span>IndexedDB Candle Logging</span>
+        <small>Persist parsed candles locally for historical records and simulation logs.</small>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggle-logging" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Supported Platforms -->
+    <div class="section-title">Supported Platforms & Providers</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+          Quotex <span style="color: var(--success); font-size: 0.7rem; font-weight: bold; background: rgba(0, 230, 118, 0.1); padding: 2px 6px; border-radius: 4px;">ACTIVE</span>
+        </span>
+        <small style="font-size: 0.7rem; color: var(--text-muted);">Fully integrated Socket.IO parser.</small>
+      </div>
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+          Binance <span style="color: var(--success); font-size: 0.7rem; font-weight: bold; background: rgba(0, 230, 118, 0.1); padding: 2px 6px; border-radius: 4px;">ACTIVE</span>
+        </span>
+        <small style="font-size: 0.7rem; color: var(--text-muted);">Fully integrated public WS stream parser.</small>
+      </div>
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+          Bybit <span style="color: var(--warning); font-size: 0.7rem; font-weight: bold; background: rgba(255, 179, 0, 0.1); padding: 2px 6px; border-radius: 4px;">TEMPLATE</span>
+        </span>
+        <small style="font-size: 0.7rem; color: var(--text-muted);">WS template structure.</small>
+      </div>
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+          TradingView <span style="color: var(--warning); font-size: 0.7rem; font-weight: bold; background: rgba(255, 179, 0, 0.1); padding: 2px 6px; border-radius: 4px;">TEMPLATE</span>
+        </span>
+        <small style="font-size: 0.7rem; color: var(--text-muted);">Chart interface hook scaffold.</small>
+      </div>
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+          Deriv <span style="color: var(--warning); font-size: 0.7rem; font-weight: bold; background: rgba(255, 179, 0, 0.1); padding: 2px 6px; border-radius: 4px;">TEMPLATE</span>
+        </span>
+        <small style="font-size: 0.7rem; color: var(--text-muted);">Binary API stream connector scaffold.</small>
+      </div>
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+          Pocket Option <span style="color: var(--warning); font-size: 0.7rem; font-weight: bold; background: rgba(255, 179, 0, 0.1); padding: 2px 6px; border-radius: 4px;">TEMPLATE</span>
+        </span>
+        <small style="font-size: 0.7rem; color: var(--text-muted);">Binary frames interceptor scaffold.</small>
+      </div>
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+          OKX <span style="color: var(--warning); font-size: 0.7rem; font-weight: bold; background: rgba(255, 179, 0, 0.1); padding: 2px 6px; border-radius: 4px;">TEMPLATE</span>
+        </span>
+        <small style="font-size: 0.7rem; color: var(--text-muted);">V5 public websocket template.</small>
+      </div>
+      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+          MetaTrader 5 <span style="color: var(--warning); font-size: 0.7rem; font-weight: bold; background: rgba(255, 179, 0, 0.1); padding: 2px 6px; border-radius: 4px;">TEMPLATE</span>
+        </span>
+        <small style="font-size: 0.7rem; color: var(--text-muted);">MT5 Web Gateway interface scaffold.</small>
+      </div>
+    </div>
+
+    <!-- Verification Tests -->
+    <div class="section-title">Diagnostics</div>
+    <div class="control-row">
+      <div class="control-label">
+        <span>Alert Engine Verification</span>
+        <small>Triggers a test browser notification to verify permissions and system sounds.</small>
+      </div>
+      <button id="btn-test-notification" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px;">
+        Trigger Test
+      </button>
+    </div>
+
+    <!-- Footer Controls -->
+    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+      <span id="save-status" style="font-size: 0.8rem; align-self: center; margin-right: auto; display: none;">Settings saved!</span>
+      <button id="btn-save-settings" class="btn">Save Configuration</button>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
