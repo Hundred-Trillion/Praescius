@@ -180,17 +180,22 @@ export class QuotexProvider extends BaseProvider {
   }
 
   formatSymbol(raw) {
-    let sym = raw.toUpperCase();
-    sym = sym.replace('_OTC', '/USD (OTC)').replace('-OTC', '/USD (OTC)');
+    if (!raw) return 'BTC/USD';
+    let sym = String(raw).toUpperCase().trim();
     
-    if (sym === '1' || sym === 'BTCUSD') {
-      return 'BTC/USD';
+    // Normalize Socket.IO symbol ids
+    if (sym === '1') return 'BTC/USD';
+
+    const isOtc = sym.includes('OTC');
+    let base = sym.replace(/(_OTC|-OTC|\s*OTC)$/, '').replace(/[^A-Z]/g, '');
+
+    if (base.length === 6) {
+      base = `${base.substring(0, 3)}/${base.substring(3, 6)}`;
+    } else if (base === 'BTCUSD') {
+      base = 'BTC/USD';
     }
-    
-    if (sym.includes('BTC') && !sym.includes('/')) {
-      if (sym.includes('USD')) return 'BTC/USD';
-    }
-    return sym;
+
+    return isOtc ? `${base} (OTC)` : base;
   }
 
   fallbackRegex(message) {
