@@ -3,6 +3,61 @@
  * Contains indicator calculation logic and debugging log helpers.
  */
 
+/**
+ * Normalizes trading symbol/instrument aliases consistently across all providers.
+ * @param {string} rawSymbol 
+ * @returns {string} Normalized symbol
+ */
+export function normalizeSymbol(rawSymbol) {
+  if (!rawSymbol) return 'UNKNOWN';
+  let sym = String(rawSymbol).toUpperCase().trim();
+  
+  // Strip exchange prefix if present, e.g. "BINANCE:BTCUSDT" -> "BTCUSDT"
+  if (sym.includes(':')) {
+    sym = sym.split(':')[1];
+  }
+
+  // Remove whitespace and underscores
+  sym = sym.replace(/\s+/g, '').replace(/_/g, '/');
+
+  // Handle OTC suffix
+  let isOtc = false;
+  if (sym.endsWith('OTC') || sym.includes('/OTC') || sym.includes('-OTC')) {
+    isOtc = true;
+    sym = sym.replace(/\/OTC|-OTC|OTC$/, '');
+  }
+
+  // Normalize specific instruments
+  if (sym === 'GOLD' || sym === 'XAUUSD' || sym === 'XAU' || sym === 'XAU/USD') {
+    sym = 'XAU/USD';
+  } else if (sym === 'SILVER' || sym === 'XAGUSD' || sym === 'XAG' || sym === 'XAG/USD') {
+    sym = 'XAG/USD';
+  } else if (sym === 'CRUDE' || sym === 'CRUDEOIL' || sym === 'USOIL') {
+    sym = 'USOIL';
+  }
+
+  // Normalize crypto or forex pairs that don't have a slash
+  if (!sym.includes('/')) {
+    if (sym.endsWith('USDT') && sym.length > 4) {
+      sym = `${sym.slice(0, -4)}/USDT`;
+    } else if (sym.endsWith('USDC') && sym.length > 4) {
+      sym = `${sym.slice(0, -4)}/USDC`;
+    } else if (sym.endsWith('USD') && sym.length > 3) {
+      sym = `${sym.slice(0, -3)}/USD`;
+    } else if (sym.endsWith('EUR') && sym.length > 3) {
+      sym = `${sym.slice(0, -3)}/EUR`;
+    } else if (sym.length === 6) {
+      sym = `${sym.substring(0, 3)}/${sym.substring(3, 6)}`;
+    }
+  }
+
+  // Clean trailing slashes or duplicate slashes
+  sym = sym.replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
+
+  return isOtc ? `${sym} (OTC)` : sym;
+}
+
+
 export const LogLevel = {
   INFO: 'INFO',
   WARN: 'WARN',

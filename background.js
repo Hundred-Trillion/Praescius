@@ -11,7 +11,7 @@ import { compileRule, parseDSL } from './core/compiler.js';
 import { evaluateRule, getMLConfidenceReport } from './core/evaluator.js';
 import { showNotification } from './core/notifier.js';
 import { aiManager } from './ai/aiManager.js';
-import { replayEngine } from './core/replay.js';
+import { ReplayEngine } from './core/replay.js';
 import { stateMachine } from './core/stateMachine.js';
 import { telemetry } from './core/telemetry.js';
 import RSI from './indicators/RSI.js';
@@ -27,28 +27,45 @@ const macdCalculator = new MACD();
 let db = null;
 let appLogger = null;
 
-let latestDiscovery = {
-  chartEngine: 'Pending',
-  transport: 'Pending',
-  dataSource: 'Pending',
-  candlesFound: false,
-  confidence: 0
-};
+// Scoped session cache/state by tabId
+class Session {
+  constructor(tabId, providerName = 'none') {
+    this.tabId = tabId;
+    this.providerName = providerName;
+    this.latestDiscovery = {
+      chartEngine: 'Pending',
+      transport: 'Pending',
+      dataSource: 'Pending',
+      candlesFound: false,
+      confidence: 0
+    };
+    this.replayEngine = new ReplayEngine(tabId);
+  }
+}
 
-// In-memory cache for candle series
+const sessions = {};
+
+function getSession(tabId) {
+  const tid = tabId || 'default';
+  if (!sessions[tid]) {
+    sessions[tid] = new Session(tid);
+  }
+  return sessions[tid];
+}
+
+// In-memory cache for candle series (keyed by `${tabId}_${symbol}_${tf}`)
 const candleCache = {};
 const CACHE_LIMIT = 200;
 
-// Rules cooldown cache
+// Rules cooldown cache (keyed by `${tabId}_${ruleId}`)
 const ruleCooldowns = {};
 const COOLDOWN_MS = 60 * 1000;
 
-// Dynamic adaptive confidences state for DOM scraped fallback channels
-const adaptiveConfidences = {
-  dom_selector: 0.8,
-  dom_title: 0.5
-};
-const latestWsPrices = {}; // Tracks latest raw WS prices to compare and calibrate DOM selectors
+// Dynamic adaptive confidences state for DOM scraped fallback channels (keyed by `${tabId}_${source}`)
+const adaptiveConfidences = {};
+
+// Tracks latest raw WS prices to compare and calibrate DOM selectors (keyed by `${tabId}_${symbol}`)
+const latestWsPrices = {}; 
 
 /**
  * Open/Initialize Database layer.
@@ -66,23 +83,41 @@ async function getDB() {
 // ----------------------------------------------------
 
 // 1. Raw Socket Frame handler -> Parser
-eventBus.subscribe('market.tick.v1', (payload) => {
+eventBus.subscribe('market.tick.v1', (event) => {
   try {
     stateMachine.transitionTo('LIVE_WS');
     telemetry.startWsSession();
     telemetry.endDomSession();
 
     const tStart = performance.now();
-    const candle = providerManager.parseFrame(payload, 'incoming');
+    const provider = providerManager.getProviderForUrl(event.url, event.title);
+    if (!provider) return;
+
+    const candle = provider.parse(event.payload, event.direction || 'incoming');
     const tEnd = performance.now();
     
     telemetry.recordProviderLatency(tEnd - tStart);
 
     if (candle) {
-      // Add dynamic source confidence
-      candle.source = 'ws';
-      candle.confidence = 1.0;
+      // Add dynamic source confidence and attributes
+      candle.source = candle.source || 'ws';
+      candle.confidence = candle.confidence || 1.0;
+      candle.tabId = event.tabId || 'default';
+      candle.provider = provider.name;
+
       eventBus.publish('market.candle.v1', candle);
+
+      // Notify content script of valid WS tick to suppress DOM fallback
+      if (event.tabId && event.tabId !== 'default') {
+        chrome.tabs.sendMessage(event.tabId, {
+          action: 'VALID_WS_TICK',
+          timestamp: Date.now()
+        }, () => {
+          if (chrome.runtime.lastError) {
+            // ignore
+          }
+        });
+      }
     }
   } catch (err) {
     console.error('[Background] WS Parsing error:', err);
@@ -94,7 +129,8 @@ eventBus.subscribe('market.tick.v1', (payload) => {
 eventBus.subscribe('market.candle.v1', async (candle) => {
   const symbol = candle.symbol;
   const tf = candle.timeframe;
-  const key = `${symbol}_${tf}`;
+  const tabId = candle.tabId || 'default';
+  const key = `${tabId}_${symbol}_${tf}`;
 
   // Transition state machines based on candle source
   if (candle.source && candle.source.startsWith('dom')) {
@@ -102,9 +138,14 @@ eventBus.subscribe('market.candle.v1', async (candle) => {
     telemetry.startDomSession();
     telemetry.endWsSession();
 
-    candle.confidence = adaptiveConfidences[candle.source] || candle.confidence || 0.8;
+    const sourceKey = `${tabId}_${candle.source}`;
+    if (!adaptiveConfidences[sourceKey]) {
+      adaptiveConfidences[sourceKey] = candle.source === 'dom_selector' ? 0.8 : 0.5;
+    }
+    candle.confidence = adaptiveConfidences[sourceKey];
     
-    const lastWs = latestWsPrices[symbol];
+    const wsPriceKey = `${tabId}_${symbol}`;
+    const lastWs = latestWsPrices[wsPriceKey];
     if (lastWs && (Date.now() - lastWs.timestamp < 5000)) {
       const delta = Math.abs(lastWs.price - candle.price);
       const pctDelta = delta / lastWs.price;
@@ -112,24 +153,26 @@ eventBus.subscribe('market.candle.v1', async (candle) => {
       console.log(`[Aetheris Validation] ${symbol} | WS: ${lastWs.price} | DOM: ${candle.price} | Delta: ${delta.toFixed(4)} (${(pctDelta * 100).toFixed(4)}%)`);
       
       if (pctDelta < 0.0005) {
-        adaptiveConfidences[candle.source] = Math.min(0.99, adaptiveConfidences[candle.source] + 0.001);
+        adaptiveConfidences[sourceKey] = Math.min(0.99, adaptiveConfidences[sourceKey] + 0.001);
       } else if (pctDelta > 0.005) {
-        adaptiveConfidences[candle.source] = Math.max(0.1, adaptiveConfidences[candle.source] - 0.01);
+        adaptiveConfidences[sourceKey] = Math.max(0.1, adaptiveConfidences[sourceKey] - 0.01);
       }
+      chrome.storage.local.set({ adaptiveConfidences });
     }
   } else if (candle.source === 'replay_engine') {
     stateMachine.transitionTo('REPLAY');
     telemetry.endWsSession();
     telemetry.endDomSession();
   } else {
-    latestWsPrices[symbol] = {
+    const wsPriceKey = `${tabId}_${symbol}`;
+    latestWsPrices[wsPriceKey] = {
       price: candle.price,
       timestamp: Date.now()
     };
   }
 
   if (appLogger) {
-    await appLogger.logTickComparison(symbol, candle.price, candle.source || 'ws', candle.confidence || 1.0);
+    await appLogger.logTickComparison(symbol, candle.price, candle.source || 'ws', candle.confidence || 1.0, candle.provider, tabId);
   }
 
   if (!candleCache[key]) {
@@ -156,35 +199,37 @@ eventBus.subscribe('market.candle.v1', async (candle) => {
 
   chrome.runtime.sendMessage({
     action: 'CANDLE_UPDATE',
-    candle: candle
+    candle: candle,
+    tabId: tabId
   }, () => {
     if (chrome.runtime.lastError) {
       // ignore
     }
   });
 
-  evaluateActiveRules(symbol, tf);
+  evaluateActiveRules(symbol, tf, tabId, candle.isHistorical);
 });
 
 // 3. System Log event handler
 eventBus.subscribe('system.logs.v1', async (log) => {
   console.log(`[EventBus Log][${log.type}] ${log.message}`);
   if (appLogger) {
-    await appLogger.logSystemEvent(log.message, log.type);
+    await appLogger.logSystemEvent(log.message, log.type, log.provider || 'system', log.tabId || 'default');
   }
 });
 
 // 4. Provider Connected / Disconnected dispatcher
 eventBus.subscribe('system.state.changed.v1', (event) => {
+  const activeName = providerManager.activeProvider?.name || 'unknown';
   if (event.to === 'LIVE_WS' || event.to === 'LIVE_DOM') {
     eventBus.publish('provider.connected.v1', {
-      provider: providerManager.activeProvider?.name || 'unknown',
+      provider: activeName,
       state: event.to,
       timestamp: Date.now()
     });
   } else if (event.to === 'OFFLINE' || event.to === 'ERROR') {
     eventBus.publish('provider.disconnected.v1', {
-      provider: providerManager.activeProvider?.name || 'unknown',
+      provider: activeName,
       state: event.to,
       timestamp: Date.now()
     });
@@ -194,8 +239,10 @@ eventBus.subscribe('system.state.changed.v1', (event) => {
 // ----------------------------------------------------
 // Rule evaluations
 // ----------------------------------------------------
-function evaluateActiveRules(symbol, timeframe) {
-  const key = `${symbol}_${timeframe}`;
+function evaluateActiveRules(symbol, timeframe, tabId, isHistorical) {
+  if (isHistorical) return; // Skip evaluation for historical backfilled candles
+
+  const key = `${tabId}_${symbol}_${timeframe}`;
   const cache = candleCache[key];
   if (!cache || cache.length < 5) return;
 
@@ -209,15 +256,16 @@ function evaluateActiveRules(symbol, timeframe) {
       if (!rule.enabled) continue;
 
       const ruleId = rule.id;
+      const cooldownKey = `${tabId}_${ruleId}`;
       const now = Date.now();
 
-      if (ruleCooldowns[ruleId] && (now - ruleCooldowns[ruleId] < COOLDOWN_MS)) {
+      if (ruleCooldowns[cooldownKey] && (now - ruleCooldowns[cooldownKey] < COOLDOWN_MS)) {
         continue;
       }
 
       const isTriggered = evaluateRule(cache, rule);
       if (isTriggered) {
-        ruleCooldowns[ruleId] = now;
+        ruleCooldowns[cooldownKey] = now;
         
         const latestCandle = cache[cache.length - 1];
         const latestPrice = latestCandle.close;
@@ -315,19 +363,23 @@ function evaluateActiveRules(symbol, timeframe) {
           symbol,
           price: latestPrice,
           mlConfidence,
-          timestamp: now
+          timestamp: now,
+          tabId
         });
 
         eventBus.publish('market.ai.summary.v1', {
           ruleId,
           alertText,
           provider,
-          timestamp: now
+          timestamp: now,
+          tabId
         });
 
         eventBus.publish('system.logs.v1', {
           message: `Rule triggered: "${rule.name}" (Aggregate Confidence: ${(mlConfidence.aggregateScore * 100).toFixed(0)}%)`,
-          type: 'info'
+          type: 'info',
+          tabId,
+          provider: latestCandle.provider
         });
       }
     }
@@ -342,6 +394,13 @@ async function startup() {
     await getDB();
     await providerManager.loadPlugins();
     stateMachine.transitionTo('CONNECTING');
+    
+    // Load persisted adaptive confidences
+    chrome.storage.local.get(['adaptiveConfidences'], (res) => {
+      if (res.adaptiveConfidences) {
+        Object.assign(adaptiveConfidences, res.adaptiveConfidences);
+      }
+    });
   } catch (err) {
     console.error('[Background] Startup error:', err);
   }
@@ -385,15 +444,30 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
     const database = await getDB();
 
     switch (message.action) {
-      case 'WS_FRAME':
-        if (sender.tab && sender.tab.url) {
-          providerManager.detectProvider(sender.tab.url, sender.tab.title);
+      case 'WS_FRAME': {
+        const wsTabId = sender.tab ? sender.tab.id : 'default';
+        const wsUrl = sender.tab ? sender.tab.url : message.url;
+        const wsTitle = sender.tab ? sender.tab.title : '';
+        const wsDirection = message.direction || 'incoming';
+
+        const wsProvider = providerManager.getProviderForUrl(wsUrl, wsTitle);
+        if (wsProvider) {
+          const session = getSession(wsTabId);
+          session.providerName = wsProvider.name;
         }
-        eventBus.publish('market.tick.v1', message.payload);
+
+        eventBus.publish('market.tick.v1', {
+          payload: message.payload,
+          url: wsUrl,
+          title: wsTitle,
+          tabId: wsTabId,
+          direction: wsDirection
+        });
         
         chrome.runtime.sendMessage({
           action: 'RAW_WS_FRAME',
-          payload: message.payload
+          payload: message.payload,
+          tabId: wsTabId
         }, () => {
           if (chrome.runtime.lastError) {
             // ignore
@@ -402,11 +476,19 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
 
         sendResponse({ success: true });
         break;
+      }
 
-      case 'DOM_TICK':
-        if (sender.tab && sender.tab.url) {
-          providerManager.detectProvider(sender.tab.url, sender.tab.title);
+      case 'DOM_TICK': {
+        const domTabId = sender.tab ? sender.tab.id : 'default';
+        const domUrl = sender.tab ? sender.tab.url : '';
+        const domTitle = sender.tab ? sender.tab.title : '';
+        
+        const domProvider = providerManager.getProviderForUrl(domUrl, domTitle);
+        if (domProvider) {
+          const session = getSession(domTabId);
+          session.providerName = domProvider.name;
         }
+
         const domPrice = Number(message.price);
         const domSymbol = message.symbol || 'EUR/USD';
         const domTimestamp = Number(message.timestamp || Date.now());
@@ -415,7 +497,8 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
         
         const domCandle = {
           schema: 1,
-          provider: providerManager.activeProvider?.name || 'dom_fallback',
+          provider: domProvider ? domProvider.name : 'dom_fallback',
+          tabId: domTabId,
           symbol: domSymbol,
           timestamp: domTimestamp,
           open: domPrice,
@@ -432,8 +515,9 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
         eventBus.publish('market.candle.v1', domCandle);
         sendResponse({ success: true });
         break;
+      }
 
-      case 'GET_PROVIDER_SELECTORS':
+      case 'GET_PROVIDER_SELECTORS': {
         const requestUrl = message.url;
         const matchingProvider = providerManager.providers.find(p => p.matches(requestUrl, ''));
         if (matchingProvider) {
@@ -442,48 +526,65 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
           sendResponse({ success: false, selectors: [] });
         }
         break;
+      }
 
-      case 'DISCOVERY_REPORT':
-        latestDiscovery = message.data;
-        const cacheKeys = Object.keys(candleCache);
-        if (cacheKeys.length > 0) {
-          latestDiscovery.candlesFound = true;
+      case 'DISCOVERY_REPORT': {
+        const discTabId = sender.tab ? sender.tab.id : 'default';
+        const sessionDisc = getSession(discTabId);
+        sessionDisc.latestDiscovery = message.data;
+
+        const discKeys = Object.keys(candleCache).filter(k => k.startsWith(`${discTabId}_`));
+        if (discKeys.length > 0) {
+          sessionDisc.latestDiscovery.candlesFound = true;
         }
         sendResponse({ success: true });
         break;
+      }
 
-      case 'GET_STATUS':
+      case 'GET_STATUS': {
+        const statusTabId = message.tabId || 'default';
+        const sessionStatus = getSession(statusTabId);
+        
         const stats = appLogger ? await appLogger.getStats() : { totalLogged: 0 };
-        const logs = await getLogs(database, 30);
+        const logs = await getLogs(database, 30, statusTabId);
         
         let latestCandle = null;
-        if (candleCache['BTC/USD_1m'] && candleCache['BTC/USD_1m'].length > 0) {
-          latestCandle = candleCache['BTC/USD_1m'][candleCache['BTC/USD_1m'].length - 1];
-        } else {
-          const keys = Object.keys(candleCache);
-          if (keys.length > 0 && candleCache[keys[0]].length > 0) {
-            latestCandle = candleCache[keys[0]][candleCache[keys[0]].length - 1];
+        const sessionKeys = Object.keys(candleCache).filter(k => k.startsWith(`${statusTabId}_`));
+        if (sessionKeys.length > 0) {
+          let newest = null;
+          for (const key of sessionKeys) {
+            const list = candleCache[key];
+            if (list && list.length > 0) {
+              const c = list[list.length - 1];
+              if (!newest || c.timestamp > newest.timestamp) {
+                newest = c;
+              }
+            }
           }
+          latestCandle = newest;
         }
+
+        const activeReplay = sessionStatus.replayEngine || { isPlaying: false, currentIndex: 0, candles: [] };
 
         sendResponse({
           success: true,
-          discovery: latestDiscovery,
+          discovery: sessionStatus.latestDiscovery,
           stats: stats,
           logs: logs,
           latestCandle: latestCandle,
-          activeProvider: providerManager.activeProvider?.name || 'none',
+          activeProvider: sessionStatus.providerName || 'none',
           state: stateMachine.getCurrentState(),
           telemetry: telemetry.getSummary(),
           replayState: {
-            isPlaying: replayEngine.isPlaying,
-            currentIndex: replayEngine.currentIndex,
-            totalCandles: replayEngine.candles.length
+            isPlaying: activeReplay.isPlaying,
+            currentIndex: activeReplay.currentIndex,
+            totalCandles: activeReplay.candles ? activeReplay.candles.length : 0
           }
         });
         break;
+      }
 
-      case 'TRANSLATE_RULE':
+      case 'TRANSLATE_RULE': {
         const promptText = String(message.prompt || '').trim();
         if (promptText.toUpperCase().startsWith('WHEN')) {
           try {
@@ -502,45 +603,48 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
                          provider === 'openai' ? settings.openaiKey : '';
                          
           try {
-            // 1. Translate via AIManager
             const rawRule = await aiManager.translate(provider, apiKey, promptText);
-            
-            // 2. Validate and Compile via compileRule
             const compiledRule = compileRule(rawRule);
-            
             sendResponse({ success: true, rule: compiledRule });
           } catch (err) {
             sendResponse({ success: false, error: err.message });
           }
         });
         break;
+      }
 
-      case 'REPLAY_COMMAND':
+      case 'REPLAY_COMMAND': {
+        const rTabId = message.tabId || 'default';
+        const session = getSession(rTabId);
+        const activeReplayEngine = session.replayEngine;
+
         if (message.command === 'load') {
-          replayEngine.loadCandles(message.data);
+          activeReplayEngine.loadCandles(message.data);
         } else if (message.command === 'start') {
-          replayEngine.start(message.speed);
+          activeReplayEngine.start(message.speed);
         } else if (message.command === 'pause') {
-          replayEngine.pause();
+          activeReplayEngine.pause();
         } else if (message.command === 'stop') {
-          replayEngine.stop();
+          activeReplayEngine.stop();
         } else if (message.command === 'step') {
-          replayEngine.step();
+          activeReplayEngine.step();
         }
         sendResponse({
           success: true,
           replayState: {
-            isPlaying: replayEngine.isPlaying,
-            currentIndex: replayEngine.currentIndex,
-            totalCandles: replayEngine.candles.length
+            isPlaying: activeReplayEngine.isPlaying,
+            currentIndex: activeReplayEngine.currentIndex,
+            totalCandles: activeReplayEngine.candles.length
           }
         });
         break;
+      }
 
-      case 'TEST_NOTIFICATION':
+      case 'TEST_NOTIFICATION': {
         showNotification('Aetheris Market Observer Test', 'Observer connection and notifier are working correctly!');
         sendResponse({ success: true });
         break;
+      }
 
       default:
         sendResponse({ success: false, error: `Unknown action: ${message.action}` });

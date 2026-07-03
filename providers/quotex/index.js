@@ -4,6 +4,7 @@
  */
 
 import BaseProvider from '../baseProvider.js';
+import { normalizeSymbol } from '../../utils/helpers.js';
 
 export class QuotexProvider extends BaseProvider {
   constructor() {
@@ -57,21 +58,63 @@ export class QuotexProvider extends BaseProvider {
 
   parse(payload, direction) {
     if (direction !== 'incoming') return null;
-    if (!payload || typeof payload !== 'string') return null;
+    if (!payload) return null;
 
     let messageBody = payload;
     
+    // Handle binary frames (ArrayBuffer, Uint8Array)
+    if (payload instanceof ArrayBuffer || ArrayBuffer.isView(payload)) {
+      try {
+        messageBody = new TextDecoder('utf-8').decode(payload);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    if (typeof messageBody !== 'string') return null;
+    
     // Clean Socket.IO headers
-    const prefixMatch = payload.match(/^([0-9]+)/);
+    const prefixMatch = messageBody.match(/^([0-9]+)/);
     if (prefixMatch) {
-      messageBody = payload.substring(prefixMatch[1].length);
+      messageBody = messageBody.substring(prefixMatch[1].length);
     }
 
     if (!messageBody || messageBody === 'probe') return null;
 
-    try {
-      const parsed = JSON.parse(messageBody);
+    // Helper function for extracting JSON from wrapped binary/headers
+    const extractJSON = (str) => {
+      const firstBrace = str.indexOf('{');
+      const firstBracket = str.indexOf('[');
+      let start = -1;
+      if (firstBrace !== -1 && firstBracket !== -1) {
+        start = Math.min(firstBrace, firstBracket);
+      } else {
+        start = firstBrace !== -1 ? firstBrace : firstBracket;
+      }
+      if (start === -1) return null;
       
+      let candidate = str.substring(start);
+      while (candidate.length > 0) {
+        try {
+          const parsed = JSON.parse(candidate);
+          return parsed;
+        } catch (e) {
+          candidate = candidate.slice(0, -1);
+        }
+      }
+      return null;
+    };
+
+    try {
+      let parsed = null;
+      try {
+        parsed = JSON.parse(messageBody);
+      } catch (err) {
+        parsed = extractJSON(messageBody);
+      }
+
+      if (!parsed) return this.fallbackRegex(messageBody);
+
       // Handle standard Socket.IO event array [eventName, eventData]
       if (Array.isArray(parsed) && parsed.length >= 2) {
         const [eventName, eventData] = parsed;
@@ -83,7 +126,7 @@ export class QuotexProvider extends BaseProvider {
         return this.parseDirectPayload(parsed, 'direct');
       }
     } catch (e) {
-      return this.fallbackRegex(payload);
+      return this.fallbackRegex(messageBody);
     }
 
     return null;
@@ -182,20 +225,8 @@ export class QuotexProvider extends BaseProvider {
   formatSymbol(raw) {
     if (!raw) return 'BTC/USD';
     let sym = String(raw).toUpperCase().trim();
-    
-    // Normalize Socket.IO symbol ids
     if (sym === '1') return 'BTC/USD';
-
-    const isOtc = sym.includes('OTC');
-    let base = sym.replace(/(_OTC|-OTC|\s*OTC)$/, '').replace(/[^A-Z]/g, '');
-
-    if (base.length === 6) {
-      base = `${base.substring(0, 3)}/${base.substring(3, 6)}`;
-    } else if (base === 'BTCUSD') {
-      base = 'BTC/USD';
-    }
-
-    return isOtc ? `${base} (OTC)` : base;
+    return normalizeSymbol(raw);
   }
 
   fallbackRegex(message) {

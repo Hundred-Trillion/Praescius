@@ -3,7 +3,7 @@
  */
 
 const DB_NAME = 'AetherisObserverDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_CANDLES = 'candles';
 const STORE_LOGS = 'logs';
 
@@ -27,18 +27,51 @@ export function initDB() {
       const db = event.target.result;
       
       // Store raw candles
+      let candleStore;
       if (!db.objectStoreNames.contains(STORE_CANDLES)) {
-        const candleStore = db.createObjectStore(STORE_CANDLES, { keyPath: 'id', autoIncrement: true });
-        // Create indexes for efficient retrieval
+        candleStore = db.createObjectStore(STORE_CANDLES, { keyPath: 'id', autoIncrement: true });
+      } else {
+        candleStore = event.target.transaction.objectStore(STORE_CANDLES);
+      }
+
+      if (!candleStore.indexNames.contains('symbol')) {
         candleStore.createIndex('symbol', 'symbol', { unique: false });
+      }
+      if (!candleStore.indexNames.contains('timestamp')) {
         candleStore.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+      if (!candleStore.indexNames.contains('symbol_timeframe')) {
         candleStore.createIndex('symbol_timeframe', ['symbol', 'timeframe'], { unique: false });
+      }
+      if (!candleStore.indexNames.contains('tabId')) {
+        candleStore.createIndex('tabId', 'tabId', { unique: false });
+      }
+      if (!candleStore.indexNames.contains('provider')) {
+        candleStore.createIndex('provider', 'provider', { unique: false });
+      }
+      if (!candleStore.indexNames.contains('tabId_symbol_timeframe')) {
+        candleStore.createIndex('tabId_symbol_timeframe', ['tabId', 'symbol', 'timeframe'], { unique: false });
       }
 
       // Store application/discovery logs
+      let logStore;
       if (!db.objectStoreNames.contains(STORE_LOGS)) {
-        const logStore = db.createObjectStore(STORE_LOGS, { keyPath: 'id', autoIncrement: true });
+        logStore = db.createObjectStore(STORE_LOGS, { keyPath: 'id', autoIncrement: true });
+      } else {
+        logStore = event.target.transaction.objectStore(STORE_LOGS);
+      }
+
+      if (!logStore.indexNames.contains('timestamp')) {
         logStore.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+      if (!logStore.indexNames.contains('tabId')) {
+        logStore.createIndex('tabId', 'tabId', { unique: false });
+      }
+      if (!logStore.indexNames.contains('provider')) {
+        logStore.createIndex('provider', 'provider', { unique: false });
+      }
+      if (!logStore.indexNames.contains('tabId_timestamp')) {
+        logStore.createIndex('tabId_timestamp', ['tabId', 'timestamp'], { unique: false });
       }
     };
   });
@@ -54,7 +87,12 @@ export function saveCandle(db, candle) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_CANDLES], 'readwrite');
     const store = transaction.objectStore(STORE_CANDLES);
-    const request = store.add(candle);
+    const record = {
+      ...candle,
+      tabId: candle.tabId || 'default',
+      provider: candle.provider || 'unknown'
+    };
+    const request = store.add(record);
 
     request.onsuccess = () => resolve(request.result);
     request.onerror = (e) => reject(e.target.error);
@@ -67,9 +105,10 @@ export function saveCandle(db, candle) {
  * @param {string} symbol 
  * @param {string} timeframe 
  * @param {number} limit 
+ * @param {string|number} tabId 
  * @returns {Promise<object[]>}
  */
-export function getCandles(db, symbol = null, timeframe = null, limit = 100) {
+export function getCandles(db, symbol = null, timeframe = null, limit = 100, tabId = null) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_CANDLES], 'readonly');
     const store = transaction.objectStore(STORE_CANDLES);
@@ -78,13 +117,21 @@ export function getCandles(db, symbol = null, timeframe = null, limit = 100) {
     const candles = [];
 
     // Order items by newest first or filter by composite index
-    if (symbol && timeframe) {
+    if (tabId && symbol && timeframe) {
+      const index = store.index('tabId_symbol_timeframe');
+      const keyRange = IDBKeyRange.only([tabId, symbol, timeframe]);
+      request = index.openCursor(keyRange, 'prev');
+    } else if (symbol && timeframe) {
       const index = store.index('symbol_timeframe');
       const keyRange = IDBKeyRange.only([symbol, timeframe]);
       request = index.openCursor(keyRange, 'prev'); // latest first
     } else if (symbol) {
       const index = store.index('symbol');
       const keyRange = IDBKeyRange.only(symbol);
+      request = index.openCursor(keyRange, 'prev');
+    } else if (tabId) {
+      const index = store.index('tabId');
+      const keyRange = IDBKeyRange.only(tabId);
       request = index.openCursor(keyRange, 'prev');
     } else {
       const index = store.index('timestamp');
@@ -126,16 +173,20 @@ export function getCandleCount(db) {
  * @param {IDBDatabase} db 
  * @param {string} message 
  * @param {string} type 
+ * @param {string} provider 
+ * @param {string|number} tabId 
  * @returns {Promise<number>}
  */
-export function saveLog(db, message, type = 'info') {
+export function saveLog(db, message, type = 'info', provider = 'system', tabId = 'default') {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_LOGS], 'readwrite');
     const store = transaction.objectStore(STORE_LOGS);
     const request = store.add({
       timestamp: Date.now(),
       message,
-      type
+      type,
+      provider: provider || 'system',
+      tabId: tabId || 'default'
     });
 
     request.onsuccess = () => resolve(request.result);
@@ -147,20 +198,33 @@ export function saveLog(db, message, type = 'info') {
  * Retrieve system logs.
  * @param {IDBDatabase} db 
  * @param {number} limit 
+ * @param {string|number} tabId 
+ * @param {string} provider 
  * @returns {Promise<object[]>}
  */
-export function getLogs(db, limit = 50) {
+export function getLogs(db, limit = 50, tabId = null, provider = null) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction([STORE_LOGS], 'readonly');
     const store = transaction.objectStore(STORE_LOGS);
-    const index = store.index('timestamp');
-    const request = index.openCursor(null, 'prev');
+    
+    let request;
     const logs = [];
+
+    if (tabId) {
+      const index = store.index('tabId_timestamp');
+      const keyRange = IDBKeyRange.bound([tabId, 0], [tabId, Date.now()]);
+      request = index.openCursor(keyRange, 'prev');
+    } else {
+      const index = store.index('timestamp');
+      request = index.openCursor(null, 'prev');
+    }
 
     request.onsuccess = (event) => {
       const cursor = event.target.result;
       if (cursor && logs.length < limit) {
-        logs.push(cursor.value);
+        if (!provider || cursor.value.provider === provider) {
+          logs.push(cursor.value);
+        }
         cursor.continue();
       } else {
         resolve(logs);

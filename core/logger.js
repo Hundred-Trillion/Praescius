@@ -25,6 +25,7 @@ export class AppLogger {
       const versioned = {
         schema: candle.schema || 1, // Schema Versioning
         provider: candle.provider || 'unknown', // Provider attribution
+        tabId: candle.tabId || 'default', // Scoped Tab ID
         symbol: candle.symbol,
         timestamp: candle.timestamp,
         open: candle.open,
@@ -51,16 +52,16 @@ export class AppLogger {
       this.cachedStats.lastUpdate = Date.now();
     } catch (err) {
       console.error('[AppLogger] Candle write failure:', err);
-      await this.logSystemEvent(`Candle log failure: ${err.message}`, 'error');
+      await this.logSystemEvent(`Candle log failure: ${err.message}`, 'error', candle.provider || 'unknown', candle.tabId || 'default');
     }
   }
 
   /**
    * Log system events.
    */
-  async logSystemEvent(message, type = 'info') {
+  async logSystemEvent(message, type = 'info', provider = 'system', tabId = 'default') {
     try {
-      await saveLog(this.db, message, type);
+      await saveLog(this.db, message, type, provider, tabId);
     } catch (err) {
       console.error('[AppLogger] Log write failure:', err);
     }
@@ -69,7 +70,7 @@ export class AppLogger {
   /**
    * Log tick comparison data for WebSocket vs DOM analysis.
    */
-  async logTickComparison(symbol, price, source, confidence) {
+  async logTickComparison(symbol, price, source, confidence, provider = 'unknown', tabId = 'default') {
     try {
       const entry = {
         t: Date.now(),
@@ -78,7 +79,7 @@ export class AppLogger {
         confidence: confidence,
         symbol: symbol
       };
-      await saveLog(this.db, JSON.stringify(entry), 'tick_comparison');
+      await saveLog(this.db, JSON.stringify(entry), 'tick_comparison', provider, tabId);
     } catch (err) {
       // ignore
     }

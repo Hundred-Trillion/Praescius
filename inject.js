@@ -15,24 +15,58 @@
     const originalSend = ws.send;
     ws.send = function(data) {
       try {
-        window.postMessage({
-          type: 'WS_FRAME',
-          direction: 'outgoing',
-          payload: data,
-          url: url
-        }, '*');
+        let payload = data;
+        if (payload instanceof Blob) {
+          payload.text().then(text => {
+            window.postMessage({
+              type: 'WS_FRAME',
+              direction: 'outgoing',
+              payload: text,
+              url: url
+            }, '*');
+          }).catch(() => {});
+        } else {
+          if (payload instanceof ArrayBuffer || ArrayBuffer.isView(payload)) {
+            try {
+              payload = new TextDecoder('utf-8').decode(payload);
+            } catch (e) {}
+          }
+          window.postMessage({
+            type: 'WS_FRAME',
+            direction: 'outgoing',
+            payload: payload,
+            url: url
+          }, '*');
+        }
       } catch (err) {}
       return originalSend.apply(this, arguments);
     };
 
     ws.addEventListener('message', (event) => {
       try {
-        window.postMessage({
-          type: 'WS_FRAME',
-          direction: 'incoming',
-          payload: event.data,
-          url: url
-        }, '*');
+        let payload = event.data;
+        if (payload instanceof Blob) {
+          payload.text().then(text => {
+            window.postMessage({
+              type: 'WS_FRAME',
+              direction: 'incoming',
+              payload: text,
+              url: url
+            }, '*');
+          }).catch(() => {});
+        } else {
+          if (payload instanceof ArrayBuffer || ArrayBuffer.isView(payload)) {
+            try {
+              payload = new TextDecoder('utf-8').decode(payload);
+            } catch (e) {}
+          }
+          window.postMessage({
+            type: 'WS_FRAME',
+            direction: 'incoming',
+            payload: payload,
+            url: url
+          }, '*');
+        }
       } catch (err) {}
     });
 

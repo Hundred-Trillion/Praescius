@@ -7,7 +7,8 @@ import { eventBus } from './eventBus.js';
 import { telemetry } from './telemetry.js';
 
 export class ReplayEngine {
-  constructor() {
+  constructor(tabId = 'default') {
+    this.tabId = tabId;
     this.candles = [];
     this.currentIndex = 0;
     this.intervalId = null;
@@ -32,6 +33,7 @@ export class ReplayEngine {
           return {
             schema: raw.schema || 1,
             provider: raw.provider || 'replay',
+            tabId: this.tabId,
             symbol: raw.symbol || 'BTC/USD',
             timeframe: raw.tf || '1m',
             timestamp: raw.t ? (raw.t * 1000) : Date.now(), // seconds to ms
@@ -58,7 +60,8 @@ export class ReplayEngine {
 
     eventBus.publish('system.logs.v1', {
       message: `Replay engine loaded ${this.candles.length} simulation records.`,
-      type: 'info'
+      type: 'info',
+      tabId: this.tabId
     });
   }
 
@@ -74,7 +77,7 @@ export class ReplayEngine {
       this.step();
     }, this.speedMs);
 
-    eventBus.publish('system.logs.v1', { message: 'Replay simulation started.', type: 'info' });
+    eventBus.publish('system.logs.v1', { message: 'Replay simulation started.', type: 'info', tabId: this.tabId });
   }
 
   /**
@@ -86,7 +89,7 @@ export class ReplayEngine {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
-    eventBus.publish('system.logs.v1', { message: 'Replay simulation paused.', type: 'info' });
+    eventBus.publish('system.logs.v1', { message: 'Replay simulation paused.', type: 'info', tabId: this.tabId });
   }
 
   /**
@@ -95,7 +98,7 @@ export class ReplayEngine {
   stop() {
     this.pause();
     this.currentIndex = 0;
-    eventBus.publish('system.logs.v1', { message: 'Replay simulation stopped.', type: 'info' });
+    eventBus.publish('system.logs.v1', { message: 'Replay simulation stopped.', type: 'info', tabId: this.tabId });
   }
 
   /**
@@ -104,7 +107,7 @@ export class ReplayEngine {
   step() {
     if (this.currentIndex >= this.candles.length) {
       this.stop();
-      eventBus.publish('system.logs.v1', { message: 'Replay simulation completed.', type: 'info' });
+      eventBus.publish('system.logs.v1', { message: 'Replay simulation completed.', type: 'info', tabId: this.tabId });
       return;
     }
 
@@ -112,8 +115,8 @@ export class ReplayEngine {
     const candle = this.candles[this.currentIndex];
     this.currentIndex++;
 
-    // Publish parsed candle event
-    eventBus.publish('market.candle.v1', candle);
+    // Publish parsed candle event with tabId
+    eventBus.publish('market.candle.v1', { ...candle, tabId: this.tabId });
     
     const tEnd = performance.now();
     telemetry.recordReplay(1, tEnd - tStart);

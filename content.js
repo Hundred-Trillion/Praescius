@@ -29,6 +29,15 @@ chrome.runtime.sendMessage({
   }
 });
 
+// Listen for messages from background (like valid WS ticks)
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'VALID_WS_TICK') {
+    lastWsMessageTime = message.timestamp || Date.now();
+    sendResponse({ success: true });
+  }
+  return true;
+});
+
 window.addEventListener('message', (event) => {
   if (event.source !== window) return;
 
@@ -37,7 +46,6 @@ window.addEventListener('message', (event) => {
 
   // Handle WebSocket raw frames
   if (msg.type === 'WS_FRAME') {
-    lastWsMessageTime = Date.now();
     chrome.runtime.sendMessage({
       action: 'WS_FRAME',
       direction: msg.direction,

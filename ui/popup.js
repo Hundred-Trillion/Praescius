@@ -67,13 +67,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Listen to message broadcasts from service worker
   chrome.runtime.onMessage.addListener((message) => {
-    if (message.action === 'CANDLE_UPDATE') {
-      updateLiveMonitor(message.candle);
-      appendParsedCandle(message.candle);
-    }
-    if (message.action === 'RAW_WS_FRAME') {
-      appendRawFrameLog(message.payload);
-    }
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const activeTab = tabs && tabs[0];
+      const tabId = activeTab ? activeTab.id : 'default';
+
+      if (message.tabId !== undefined && message.tabId !== tabId) {
+        return;
+      }
+
+      if (message.action === 'CANDLE_UPDATE') {
+        updateLiveMonitor(message.candle);
+        appendParsedCandle(message.candle);
+      }
+      if (message.action === 'RAW_WS_FRAME') {
+        appendRawFrameLog(message.payload);
+      }
+    });
   });
 });
 
@@ -81,18 +90,23 @@ document.addEventListener('DOMContentLoaded', async () => {
  * Polls background service worker for status summary details.
  */
 function pollStatus() {
-  chrome.runtime.sendMessage({ action: 'GET_STATUS' }, (response) => {
-    if (chrome.runtime.lastError || !response || !response.success) {
-      updateConnectionStatus(false);
-      return;
-    }
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const activeTab = tabs && tabs[0];
+    const tabId = activeTab ? activeTab.id : 'default';
 
-    updateConnectionStatus(true, response.latestCandle);
-    updateDiscoveryReport(response.discovery, response.activeProvider);
-    updateMetrics(response.stats, response.latestCandle);
-    updateLogs(response.logs);
-    updateReplayPanel(response.replayState);
-    updateTelemetry(response.state, response.telemetry);
+    chrome.runtime.sendMessage({ action: 'GET_STATUS', tabId: tabId }, (response) => {
+      if (chrome.runtime.lastError || !response || !response.success) {
+        updateConnectionStatus(false);
+        return;
+      }
+
+      updateConnectionStatus(true, response.latestCandle);
+      updateDiscoveryReport(response.discovery, response.activeProvider);
+      updateMetrics(response.stats, response.latestCandle);
+      updateLogs(response.logs);
+      updateReplayPanel(response.replayState);
+      updateTelemetry(response.state, response.telemetry);
+    });
   });
 
   // Check Settings
@@ -277,14 +291,20 @@ async function handleReplayLoad() {
     const res = await fetch('../logs/candles.jsonl');
     const contentText = await res.text();
 
-    chrome.runtime.sendMessage({
-      action: 'REPLAY_COMMAND',
-      command: 'load',
-      data: contentText
-    }, (response) => {
-      if (response && response.success) {
-        updateReplayPanel(response.replayState);
-      }
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const activeTab = tabs && tabs[0];
+      const tabId = activeTab ? activeTab.id : 'default';
+
+      chrome.runtime.sendMessage({
+        action: 'REPLAY_COMMAND',
+        command: 'load',
+        data: contentText,
+        tabId: tabId
+      }, (response) => {
+        if (response && response.success) {
+          updateReplayPanel(response.replayState);
+        }
+      });
     });
   } catch (err) {
     alert(`Failed to load replay dataset file: ${err.message}`);
@@ -292,14 +312,20 @@ async function handleReplayLoad() {
 }
 
 function sendReplayCommand(cmd) {
-  chrome.runtime.sendMessage({
-    action: 'REPLAY_COMMAND',
-    command: cmd,
-    speed: 1000 // 1 candle per second speed
-  }, (response) => {
-    if (response && response.success) {
-      updateReplayPanel(response.replayState);
-    }
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const activeTab = tabs && tabs[0];
+    const tabId = activeTab ? activeTab.id : 'default';
+
+    chrome.runtime.sendMessage({
+      action: 'REPLAY_COMMAND',
+      command: cmd,
+      speed: 1000, // 1 candle per second speed
+      tabId: tabId
+    }, (response) => {
+      if (response && response.success) {
+        updateReplayPanel(response.replayState);
+      }
+    });
   });
 }
 

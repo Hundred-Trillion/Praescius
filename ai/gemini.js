@@ -61,7 +61,7 @@ export class GeminiAI extends BaseAI {
       throw new Error('Gemini API Key is not configured. Configure it in settings.');
     }
 
-    const model = 'gemini-2.5-flash';
+    const model = 'gemini-1.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const payload = {
@@ -103,7 +103,7 @@ export class GeminiAI extends BaseAI {
       throw new Error('Gemini API Key is not configured.');
     }
 
-    const model = 'gemini-2.5-flash';
+    const model = 'gemini-1.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const instruction = `
