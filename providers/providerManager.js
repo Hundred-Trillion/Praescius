@@ -9,6 +9,13 @@ import { TradingViewProvider } from './tradingview/index.js';
 import { PocketOptionProvider } from './pocketoption/index.js';
 import { BybitProvider } from './bybit/index.js';
 
+// Static plugin imports to comply with Service Worker CSP/import restrictions
+import { DummyProvider } from '../plugins/dummy/provider.js';
+
+const STATIC_PLUGINS = {
+  'dummy': DummyProvider
+};
+
 class ProviderManager {
   constructor() {
     // List of active providers
@@ -83,9 +90,13 @@ class ProviderManager {
             const selectorsRes = await fetch(selectorsUrl);
             const selectors = selectorsRes.ok ? await selectorsRes.json() : [];
 
-            const modulePath = `../plugins/${key}/provider.js`;
-            const module = await import(modulePath);
-            const ProviderClass = module.default || module[Object.keys(module)[0]];
+            // Use statically imported provider class to comply with Service Worker rules
+            const ProviderClass = STATIC_PLUGINS[key];
+            if (!ProviderClass) {
+              console.warn(`[Plugin SDK] Statically registered provider for plugin '${key}' not found.`);
+              continue;
+            }
+
             const providerInst = new ProviderClass();
             providerInst.selectors = selectors;
             providerInst.name = manifest.name || key;
