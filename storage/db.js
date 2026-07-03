@@ -256,37 +256,39 @@ export function clearDatabase(db) {
 /**
  * Prunes older entries from database stores to restrict disk allocation.
  * @param {IDBDatabase} db 
+ * @param {number} maxTicks 
  * @param {number} maxCandles 
  * @param {number} maxLogs 
  * @returns {Promise<void>}
  */
-export function pruneDatabase(db, maxCandles = 5000, maxLogs = 2000) {
+export function pruneDatabase(db, maxTicks = 20000, maxCandles = 5000, maxLogs = 2000) {
   return new Promise((resolve) => {
     const transaction = db.transaction([STORE_CANDLES, STORE_LOGS], 'readwrite');
     
     // Prune Candles
     const candleStore = transaction.objectStore(STORE_CANDLES);
     const candleIndex = candleStore.index('timestamp');
-    let candleCount = 0;
+    let ticksEncountered = 0;
+    let candlesEncountered = 0;
     
-    candleIndex.openKeyCursor(null, 'next').onsuccess = (event) => {
+    candleIndex.openCursor(null, 'prev').onsuccess = (event) => {
       const cursor = event.target.result;
       if (cursor) {
-        candleCount++;
-        cursor.continue();
-      } else {
-        if (candleCount > maxCandles) {
-          const deleteCount = candleCount - maxCandles;
-          let deleted = 0;
-          candleIndex.openCursor(null, 'next').onsuccess = (ev) => {
-            const cur = ev.target.result;
-            if (cur && deleted < deleteCount) {
-              cur.delete();
-              deleted++;
-              cur.continue();
-            }
-          };
+        const record = cursor.value;
+        const tf = record.timeframe;
+        
+        if (tf === 'tick') {
+          ticksEncountered++;
+          if (ticksEncountered > maxTicks) {
+            cursor.delete();
+          }
+        } else {
+          candlesEncountered++;
+          if (candlesEncountered > maxCandles) {
+            cursor.delete();
+          }
         }
+        cursor.continue();
       }
     };
 
@@ -295,24 +297,14 @@ export function pruneDatabase(db, maxCandles = 5000, maxLogs = 2000) {
     const logIndex = logStore.index('timestamp');
     let logCount = 0;
 
-    logIndex.openKeyCursor(null, 'next').onsuccess = (event) => {
+    logIndex.openCursor(null, 'prev').onsuccess = (event) => {
       const cursor = event.target.result;
       if (cursor) {
         logCount++;
-        cursor.continue();
-      } else {
         if (logCount > maxLogs) {
-          const deleteCount = logCount - maxLogs;
-          let deleted = 0;
-          logIndex.openCursor(null, 'next').onsuccess = (ev) => {
-            const cur = ev.target.result;
-            if (cur && deleted < deleteCount) {
-              cur.delete();
-              deleted++;
-              cur.continue();
-            }
-          };
+          cursor.delete();
         }
+        cursor.continue();
       }
     };
 
