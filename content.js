@@ -3,28 +3,37 @@
  * Bridges data channels and passes extension IDs to page contexts.
  */
 
+// Helper to determine if extension context is still valid
+function isContextValid() {
+  try {
+    return typeof chrome !== 'undefined' && !!chrome.runtime && !!chrome.runtime.getManifest();
+  } catch (e) {
+    return false;
+  }
+}
+
 // Helper to safely send messages without throwing uncaught invalid context errors
 function safeSendMessage(message, callback) {
+  if (!isContextValid()) return;
   try {
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
-      chrome.runtime.sendMessage(message, (response) => {
-        if (chrome.runtime.lastError) {
-          // Suppress errors related to context invalidation
+    chrome.runtime.sendMessage(message, (response) => {
+      try {
+        if (chrome.runtime && chrome.runtime.lastError) {
           return;
         }
-        if (callback) callback(response);
-      });
-    }
+      } catch (e) {
+        return;
+      }
+      if (callback) callback(response);
+    });
   } catch (err) {
-    if (err && err.message && !err.message.includes('Extension context invalidated')) {
-      console.error('[Aetheris Content] sendMessage error:', err);
-    }
+    // Suppress context invalidation errors
   }
 }
 
 // 1. Inject the extension asset path into the main page context
 try {
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+  if (isContextValid()) {
     const seedScript = document.createElement('script');
     seedScript.textContent = `window.__AETHERIS_EXTENSION_URL__ = "${chrome.runtime.getURL('')}";`;
     (document.head || document.documentElement).appendChild(seedScript);
@@ -52,8 +61,9 @@ safeSendMessage({
 
 // Listen for messages from background (like valid WS ticks)
 try {
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+  if (isContextValid()) {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (!isContextValid()) return false;
       if (message.action === 'VALID_WS_TICK') {
         lastWsMessageTime = message.timestamp || Date.now();
         sendResponse({ success: true });
@@ -66,6 +76,7 @@ try {
 }
 
 window.addEventListener('message', (event) => {
+  if (!isContextValid()) return;
   if (event.source !== window) return;
 
   const msg = event.data;
@@ -98,8 +109,9 @@ let unchangedCount = 0;
 let isStale = false;
 
 setInterval(() => {
-  const wsIdleTime = Date.now() - lastWsMessageTime;
+  if (!isContextValid()) return;
   
+  const wsIdleTime = Date.now() - lastWsMessageTime;
   if (wsIdleTime > 4000) {
     const scraped = scrapeCurrentPageDOM();
     if (scraped && scraped.price) {
