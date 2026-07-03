@@ -1,0 +1,5 @@
+{
+  "name": "dummy",
+  "version": "1.0.0",
+  "description": "Mock exchange platform testing the dynamic Plugin SDK loader"
+}

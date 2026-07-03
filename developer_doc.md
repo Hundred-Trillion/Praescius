@@ -143,8 +143,50 @@ This summary is passed to Gemini or OpenAI to return a natural-language analysis
 
 ---
 
-## 7. Future Predictive Machine Learning Layer
-The compiled tick comparison log database serves as a high-density, structured dataset. Future iterations can feed this data to a local ML layer (TensorFlow.js or WebNN) to:
-1.  **Estimate Trigger Success Probability**: Forecast the probability of a positive outcome following indicator crossovers.
-2.  **Predict Micro-trend Reversals**: Train short-term classifiers to predict price action over the next 10-30 ticks.
-3.  **Heuristically Filter Noise**: Filter out low-confidence anomaly price spikes before they hit the rule engine.
+---
+
+## 7. Versioned Event Bus Channels
+The internal message pipeline uses versioned event schemas to prevent breaking changes:
+*   `market.tick.v1` - Emitted when a new raw websocket frame is intercepted from the page.
+*   `market.candle.v1` - Emitted when a frame is parsed into a uniform candle object.
+*   `market.rule.trigger.v1` - Emitted when a user-defined rule evaluates to true.
+*   `market.ai.summary.v1` - Emitted when an AI model completes a micro-trend summary analysis.
+*   `provider.connected.v1` - Emitted when a broker provider successfully registers or streams live data.
+*   `provider.disconnected.v1` - Emitted when the streaming connection halts.
+*   `system.state.changed.v1` - Emitted on execution state changes.
+*   `system.logs.v1` - Emitted for general system logging.
+
+---
+
+## 8. State Machine Orchestration
+The system state machine (`core/stateMachine.js`) manages transitions between key execution states to ensure a single source of truth:
+*   `OFFLINE` - Initial or idle state when no providers are detected.
+*   `CONNECTING` - Active detection state attempting handshake or hook binding.
+*   `LIVE_WS` - Primary real-time stream active utilizing WebSockets.
+*   `LIVE_DOM` - Secondary DOM selector fallback stream active.
+*   `REPLAY` - Simulator mode reading local dataset logs.
+*   `ERROR` - Halted state due to parsing exception or socket drop.
+
+---
+
+## 9. Rules DSL Parser
+Users can write offline-compiled rules using a structured natural-language syntax starting with `WHEN`:
+```text
+WHEN
+  RSI < 30
+  AND
+  EMA9 crosses above 100
+THEN
+  Notify
+```
+The compiler parses indicators (Price, RSI, SMA, EMA, MACD, ATR, VWAP), numeric periods, comparison operators (`>`, `<`, `>=`, `<=`, `==`, `crosses above`, `crosses below`), logical operators (`AND`, `OR`, `NOT`), and candlestick patterns offline instantly.
+
+---
+
+## 10. Performance Telemetry Diagnostics
+The telemetry monitor (`core/telemetry.js`) records runtime diagnostic metrics:
+*   **WS/DOM Uptime**: Track duration of active WebSocket vs DOM fallback streams.
+*   **Avg Provider Latency**: Track time spent decoding incoming frames.
+*   **Avg AI Summarizer Latency**: Track LLM notification compilation response time.
+*   **Selector Failures**: Count DOM extraction errors.
+*   **Replay Processing**: Measure tick simulation performance.

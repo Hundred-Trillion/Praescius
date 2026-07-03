@@ -100,3 +100,108 @@ export function compileRule(rawJSON) {
 
   return compiled;
 }
+
+/**
+ * Compiles a Rules DSL string into a structured JSON rule object.
+ * Supporting syntax:
+ * WHEN
+ *   RSI < 30
+ *   AND
+ *   EMA9 crosses above 100
+ * THEN
+ *   Notify
+ * @param {string} dslString 
+ * @returns {object} Compiled rule configuration
+ */
+export function parseDSL(dslString) {
+  if (!dslString || typeof dslString !== 'string') {
+    throw new Error('DSL input must be a string.');
+  }
+
+  const lines = dslString
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
+
+  const rule = {
+    id: Date.now().toString(),
+    name: 'DSL Compiled Rule',
+    operator: 'AND',
+    enabled: true,
+    conditions: []
+  };
+
+  let inWhen = false;
+
+  for (const line of lines) {
+    const upperLine = line.toUpperCase();
+    if (upperLine === 'WHEN') {
+      inWhen = true;
+      continue;
+    }
+    if (upperLine === 'THEN' || upperLine.startsWith('THEN')) {
+      break;
+    }
+    if (!inWhen) continue;
+
+    if (upperLine === 'AND') {
+      rule.operator = 'AND';
+      continue;
+    }
+    if (upperLine === 'OR') {
+      rule.operator = 'OR';
+      continue;
+    }
+    if (upperLine === 'NOT') {
+      rule.operator = 'NOT';
+      continue;
+    }
+
+    // Format: IndicatorName[Period] Operator Value
+    const match = line.match(/^([A-Za-z]+)(\d+)?\s*(>=|<=|>|<|==|crosses\s+above|crosses\s+below|crossover\s+above|crossover\s+below)\s*([0-9.]+)/i);
+    if (match) {
+      let ind = match[1];
+      ind = ind.toUpperCase();
+      if (ind === 'PRICE') ind = 'Price';
+      else if (ind === 'RSI') ind = 'RSI';
+      else if (ind === 'SMA') ind = 'SMA';
+      else if (ind === 'EMA') ind = 'EMA';
+      else if (ind === 'MACD') ind = 'MACD';
+      else if (ind === 'ATR') ind = 'ATR';
+      else if (ind === 'VWAP') ind = 'VWAP';
+
+      const period = match[2] ? parseInt(match[2], 10) : (ind === 'RSI' ? 14 : undefined);
+      let op = match[3].toLowerCase();
+      if (op.includes('above')) op = 'crossover_above';
+      else if (op.includes('below')) op = 'crossover_below';
+
+      const val = parseFloat(match[4]);
+
+      rule.conditions.push({
+        indicator: ind,
+        period: period,
+        operator: op,
+        value: val
+      });
+      continue;
+    }
+
+    // Format: Candlestick Pattern Name
+    const patternMatch = SUPPORTED_PATTERNS.find(p => upperLine.includes(p.toUpperCase()));
+    if (patternMatch) {
+      rule.conditions.push({
+        pattern: patternMatch
+      });
+      continue;
+    }
+
+    throw new Error(`DSL Syntax Error: Could not parse condition line: "${line}"`);
+  }
+
+  if (rule.conditions.length === 0) {
+    throw new Error('DSL Compile Failure: No valid conditions extracted. Check syntax.');
+  }
+
+  rule.name = rule.conditions.map(c => c.pattern || `${c.indicator}${c.period || ''} ${c.operator} ${c.value}`).join(' & ');
+  return rule;
+}

@@ -4,6 +4,7 @@
  */
 
 import { eventBus } from './eventBus.js';
+import { telemetry } from './telemetry.js';
 
 export class ReplayEngine {
   constructor() {
@@ -28,7 +29,6 @@ export class ReplayEngine {
       .map(line => {
         try {
           const raw = JSON.parse(line);
-          // Standardize JSONL keys into internal schema format
           return {
             schema: raw.schema || 1,
             provider: raw.provider || 'replay',
@@ -56,7 +56,7 @@ export class ReplayEngine {
       this.intervalId = null;
     }
 
-    eventBus.publish('logs:system', {
+    eventBus.publish('system.logs.v1', {
       message: `Replay engine loaded ${this.candles.length} simulation records.`,
       type: 'info'
     });
@@ -74,7 +74,7 @@ export class ReplayEngine {
       this.step();
     }, this.speedMs);
 
-    eventBus.publish('logs:system', { message: 'Replay simulation started.', type: 'info' });
+    eventBus.publish('system.logs.v1', { message: 'Replay simulation started.', type: 'info' });
   }
 
   /**
@@ -86,7 +86,7 @@ export class ReplayEngine {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
-    eventBus.publish('logs:system', { message: 'Replay simulation paused.', type: 'info' });
+    eventBus.publish('system.logs.v1', { message: 'Replay simulation paused.', type: 'info' });
   }
 
   /**
@@ -95,7 +95,7 @@ export class ReplayEngine {
   stop() {
     this.pause();
     this.currentIndex = 0;
-    eventBus.publish('logs:system', { message: 'Replay simulation stopped.', type: 'info' });
+    eventBus.publish('system.logs.v1', { message: 'Replay simulation stopped.', type: 'info' });
   }
 
   /**
@@ -104,15 +104,19 @@ export class ReplayEngine {
   step() {
     if (this.currentIndex >= this.candles.length) {
       this.stop();
-      eventBus.publish('logs:system', { message: 'Replay simulation completed.', type: 'info' });
+      eventBus.publish('system.logs.v1', { message: 'Replay simulation completed.', type: 'info' });
       return;
     }
 
+    const tStart = performance.now();
     const candle = this.candles[this.currentIndex];
     this.currentIndex++;
 
     // Publish parsed candle event
-    eventBus.publish('network:parsed_candle', candle);
+    eventBus.publish('market.candle.v1', candle);
+    
+    const tEnd = performance.now();
+    telemetry.recordReplay(1, tEnd - tStart);
   }
 }
 

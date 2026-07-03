@@ -7,11 +7,13 @@ import { eventBus } from './core/eventBus.js';
 import { initDB, saveLog, getLogs } from './storage/db.js';
 import { providerManager } from './providers/providerManager.js';
 import { AppLogger } from './core/logger.js';
-import { compileRule } from './core/compiler.js';
-import { evaluateRule } from './core/evaluator.js';
+import { compileRule, parseDSL } from './core/compiler.js';
+import { evaluateRule, getMLConfidenceReport } from './core/evaluator.js';
 import { showNotification } from './core/notifier.js';
 import { aiManager } from './ai/aiManager.js';
 import { replayEngine } from './core/replay.js';
+import { stateMachine } from './core/stateMachine.js';
+import { telemetry } from './core/telemetry.js';
 import RSI from './indicators/RSI.js';
 import EMA from './indicators/EMA.js';
 import SMA from './indicators/SMA.js';
@@ -64,25 +66,42 @@ async function getDB() {
 // ----------------------------------------------------
 
 // 1. Raw Socket Frame handler -> Parser
-eventBus.subscribe('network:ws_raw', (payload) => {
+eventBus.subscribe('market.tick.v1', (payload) => {
   try {
+    stateMachine.transitionTo('LIVE_WS');
+    telemetry.startWsSession();
+    telemetry.endDomSession();
+
+    const tStart = performance.now();
     const candle = providerManager.parseFrame(payload, 'incoming');
+    const tEnd = performance.now();
+    
+    telemetry.recordProviderLatency(tEnd - tStart);
+
     if (candle) {
-      eventBus.publish('network:parsed_candle', candle);
+      // Add dynamic source confidence
+      candle.source = 'ws';
+      candle.confidence = 1.0;
+      eventBus.publish('market.candle.v1', candle);
     }
   } catch (err) {
     console.error('[Background] WS Parsing error:', err);
+    telemetry.logSelectorFailure();
   }
 });
 
 // 2. Parsed Candle handler -> Cache, DB, Rule evaluation
-eventBus.subscribe('network:parsed_candle', async (candle) => {
+eventBus.subscribe('market.candle.v1', async (candle) => {
   const symbol = candle.symbol;
   const tf = candle.timeframe;
   const key = `${symbol}_${tf}`;
 
-  // Real-time Validation and Adaptive Confidence Scorer
+  // Transition state machines based on candle source
   if (candle.source && candle.source.startsWith('dom')) {
+    stateMachine.transitionTo('LIVE_DOM');
+    telemetry.startDomSession();
+    telemetry.endWsSession();
+
     candle.confidence = adaptiveConfidences[candle.source] || candle.confidence || 0.8;
     
     const lastWs = latestWsPrices[symbol];
@@ -98,6 +117,10 @@ eventBus.subscribe('network:parsed_candle', async (candle) => {
         adaptiveConfidences[candle.source] = Math.max(0.1, adaptiveConfidences[candle.source] - 0.01);
       }
     }
+  } else if (candle.source === 'replay_engine') {
+    stateMachine.transitionTo('REPLAY');
+    telemetry.endWsSession();
+    telemetry.endDomSession();
   } else {
     latestWsPrices[symbol] = {
       price: candle.price,
@@ -116,7 +139,6 @@ eventBus.subscribe('network:parsed_candle', async (candle) => {
   const cache = candleCache[key];
   const lastIndex = cache.length - 1;
 
-  // Insert or update candle
   if (lastIndex >= 0 && cache[lastIndex].timestamp === candle.timestamp) {
     cache[lastIndex] = candle;
   } else {
@@ -125,7 +147,6 @@ eventBus.subscribe('network:parsed_candle', async (candle) => {
       cache.shift();
     }
     
-    // Persist to DB if active
     chrome.storage.local.get(['settings'], async (res) => {
       if (res.settings?.loggingEnabled !== false && appLogger) {
         await appLogger.logCandle(candle);
@@ -133,7 +154,6 @@ eventBus.subscribe('network:parsed_candle', async (candle) => {
     });
   }
 
-  // Notify UI
   chrome.runtime.sendMessage({
     action: 'CANDLE_UPDATE',
     candle: candle
@@ -143,15 +163,31 @@ eventBus.subscribe('network:parsed_candle', async (candle) => {
     }
   });
 
-  // Evaluate active rules
   evaluateActiveRules(symbol, tf);
 });
 
 // 3. System Log event handler
-eventBus.subscribe('logs:system', async (log) => {
+eventBus.subscribe('system.logs.v1', async (log) => {
   console.log(`[EventBus Log][${log.type}] ${log.message}`);
   if (appLogger) {
     await appLogger.logSystemEvent(log.message, log.type);
+  }
+});
+
+// 4. Provider Connected / Disconnected dispatcher
+eventBus.subscribe('system.state.changed.v1', (event) => {
+  if (event.to === 'LIVE_WS' || event.to === 'LIVE_DOM') {
+    eventBus.publish('provider.connected.v1', {
+      provider: providerManager.activeProvider?.name || 'unknown',
+      state: event.to,
+      timestamp: Date.now()
+    });
+  } else if (event.to === 'OFFLINE' || event.to === 'ERROR') {
+    eventBus.publish('provider.disconnected.v1', {
+      provider: providerManager.activeProvider?.name || 'unknown',
+      state: event.to,
+      timestamp: Date.now()
+    });
   }
 });
 
@@ -230,12 +266,15 @@ function evaluateActiveRules(symbol, timeframe) {
           }
         } catch (e) {}
 
+        const mlConfidence = getMLConfidenceReport(cache, rule, confidence);
+
         const summary = {
           symbol,
           trend,
           triggerRule: rule.name,
           lastPrice: latestPrice,
-          confidence: confidence,
+          confidence: mlConfidence.aggregateScore,
+          mlConfidenceDetails: mlConfidence,
           timestamp: now,
           context: {
             last20Ticks: cache.slice(-20).map(c => ({
@@ -257,17 +296,37 @@ function evaluateActiveRules(symbol, timeframe) {
                        provider === 'openai' ? settings.openaiKey : '';
         
         let alertText = '';
+        const tStartNotif = performance.now();
         try {
           alertText = await aiManager.summarizeNotification(provider, apiKey, summary);
         } catch (e) {
           alertText = `Rule: "${rule.name}" met.\nPrice: ${latestPrice.toLocaleString()}\nTime: ${new Date().toLocaleTimeString()}`;
         }
+        const tEndNotif = performance.now();
+        telemetry.recordNotificationLatency(tEndNotif - tStartNotif);
 
         const title = `${symbol} [V2 Alert]`;
         showNotification(title, alertText);
 
-        eventBus.publish('logs:system', {
-          message: `Triggered notification: "${alertText}" (Confidence: ${confidence})`,
+        // Publish versioned triggers and summary events
+        eventBus.publish('market.rule.trigger.v1', {
+          ruleId,
+          ruleName: rule.name,
+          symbol,
+          price: latestPrice,
+          mlConfidence,
+          timestamp: now
+        });
+
+        eventBus.publish('market.ai.summary.v1', {
+          ruleId,
+          alertText,
+          provider,
+          timestamp: now
+        });
+
+        eventBus.publish('system.logs.v1', {
+          message: `Rule triggered: "${rule.name}" (Aggregate Confidence: ${(mlConfidence.aggregateScore * 100).toFixed(0)}%)`,
           type: 'info'
         });
       }
@@ -276,18 +335,29 @@ function evaluateActiveRules(symbol, timeframe) {
 }
 
 // ----------------------------------------------------
-// Extension runtime message orchestration
+// Service Worker Startup & Installation Orchestration
 // ----------------------------------------------------
-chrome.runtime.onInstalled.addListener(async () => {
+async function startup() {
   try {
     await getDB();
-    eventBus.publish('logs:system', { message: 'Aetheris Market Observer V2 initialized successfully.', type: 'info' });
+    await providerManager.loadPlugins();
+    stateMachine.transitionTo('CONNECTING');
+  } catch (err) {
+    console.error('[Background] Startup error:', err);
+  }
+}
+startup();
+
+chrome.runtime.onInstalled.addListener(async () => {
+  try {
+    await startup();
+    eventBus.publish('system.logs.v1', { message: 'Aetheris Market Observer V2 installed and initialized successfully.', type: 'info' });
     
     chrome.storage.local.get(['settings', 'rules'], (res) => {
       if (!res.settings) {
         chrome.storage.local.set({
           settings: {
-            aiProvider: 'local', // default local provider
+            aiProvider: 'local',
             geminiKey: '',
             openaiKey: '',
             notificationsEnabled: true,
@@ -316,14 +386,11 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
 
     switch (message.action) {
       case 'WS_FRAME':
-        // Check active provider from URL
         if (sender.tab && sender.tab.url) {
           providerManager.detectProvider(sender.tab.url, sender.tab.title);
         }
-        // Publish raw packet to Event Bus
-        eventBus.publish('network:ws_raw', message.payload);
+        eventBus.publish('market.tick.v1', message.payload);
         
-        // Broadcast raw frame to UI listeners (e.g. Developer Panel)
         chrome.runtime.sendMessage({
           action: 'RAW_WS_FRAME',
           payload: message.payload
@@ -362,7 +429,7 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
           confidence: domConfidence
         };
         
-        eventBus.publish('network:parsed_candle', domCandle);
+        eventBus.publish('market.candle.v1', domCandle);
         sendResponse({ success: true });
         break;
 
@@ -393,7 +460,6 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
         if (candleCache['BTC/USD_1m'] && candleCache['BTC/USD_1m'].length > 0) {
           latestCandle = candleCache['BTC/USD_1m'][candleCache['BTC/USD_1m'].length - 1];
         } else {
-          // Find any active symbol cache
           const keys = Object.keys(candleCache);
           if (keys.length > 0 && candleCache[keys[0]].length > 0) {
             latestCandle = candleCache[keys[0]][candleCache[keys[0]].length - 1];
@@ -407,6 +473,8 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
           logs: logs,
           latestCandle: latestCandle,
           activeProvider: providerManager.activeProvider?.name || 'none',
+          state: stateMachine.getCurrentState(),
+          telemetry: telemetry.getSummary(),
           replayState: {
             isPlaying: replayEngine.isPlaying,
             currentIndex: replayEngine.currentIndex,
@@ -416,6 +484,17 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
         break;
 
       case 'TRANSLATE_RULE':
+        const promptText = String(message.prompt || '').trim();
+        if (promptText.toUpperCase().startsWith('WHEN')) {
+          try {
+            const compiledRule = parseDSL(promptText);
+            sendResponse({ success: true, rule: compiledRule });
+          } catch (err) {
+            sendResponse({ success: false, error: err.message });
+          }
+          break;
+        }
+
         chrome.storage.local.get(['settings'], async (res) => {
           const settings = res.settings || {};
           const provider = settings.aiProvider || 'local';
@@ -424,7 +503,7 @@ async function handleRuntimeMessage(message, sender, sendResponse) {
                          
           try {
             // 1. Translate via AIManager
-            const rawRule = await aiManager.translate(provider, apiKey, message.prompt);
+            const rawRule = await aiManager.translate(provider, apiKey, promptText);
             
             // 2. Validate and Compile via compileRule
             const compiledRule = compileRule(rawRule);

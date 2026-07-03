@@ -54,6 +54,42 @@ class ProviderManager {
     const parser = this.activeProvider || this.providers[0];
     return parser.parse(payload, direction);
   }
+
+  /**
+   * Dynamically loads provider plugins from /plugins/ directory.
+   */
+  async loadPlugins() {
+    const list = ['dummy'];
+    for (const key of list) {
+      try {
+        const manifestUrl = chrome.runtime.getURL(`plugins/${key}/manifest.json`);
+        const manifestRes = await fetch(manifestUrl);
+        if (!manifestRes.ok) continue;
+        const manifest = await manifestRes.json();
+
+        const selectorsUrl = chrome.runtime.getURL(`plugins/${key}/selectors.json`);
+        const selectorsRes = await fetch(selectorsUrl);
+        const selectors = selectorsRes.ok ? await selectorsRes.json() : [];
+
+        const modulePath = `../plugins/${key}/provider.js`;
+        const module = await import(modulePath);
+        const ProviderClass = module.default || module[Object.keys(module)[0]];
+        const providerInst = new ProviderClass();
+        providerInst.selectors = selectors;
+        providerInst.name = manifest.name || key;
+
+        const existingIdx = this.providers.findIndex(p => p.name === providerInst.name);
+        if (existingIdx !== -1) {
+          this.providers[existingIdx] = providerInst;
+        } else {
+          this.providers.push(providerInst);
+        }
+        console.log(`[Plugin SDK] Successfully loaded external provider plugin: ${key}`);
+      } catch (err) {
+        console.error(`[Plugin SDK] Error loading plugin: ${key}`, err);
+      }
+    }
+  }
 }
 
 export const providerManager = new ProviderManager();

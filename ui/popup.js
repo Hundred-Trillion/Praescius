@@ -92,6 +92,7 @@ function pollStatus() {
     updateMetrics(response.stats, response.latestCandle);
     updateLogs(response.logs);
     updateReplayPanel(response.replayState);
+    updateTelemetry(response.state, response.telemetry);
   });
 
   // Check Settings
@@ -221,6 +222,47 @@ function updateReplayPanel(state) {
   } else {
     playBtn.disabled = false;
     playBtn.textContent = 'Play';
+  }
+}
+
+function updateTelemetry(state, tel) {
+  const stateEl = document.getElementById('system-state');
+  if (stateEl) {
+    stateEl.textContent = state || 'OFFLINE';
+    if (state === 'LIVE_WS') {
+      stateEl.style.color = 'var(--success)';
+    } else if (state === 'LIVE_DOM') {
+      stateEl.style.color = 'var(--warning)';
+    } else if (state === 'REPLAY') {
+      stateEl.style.color = 'var(--primary)';
+    } else if (state === 'ERROR') {
+      stateEl.style.color = 'var(--danger)';
+    } else {
+      stateEl.style.color = 'var(--text-muted)';
+    }
+  }
+
+  if (!tel) return;
+
+  const wsUptimeEl = document.getElementById('tel-ws-uptime');
+  if (wsUptimeEl) wsUptimeEl.textContent = `${tel.wsUptimeSeconds || 0}s`;
+
+  const domUptimeEl = document.getElementById('tel-dom-uptime');
+  if (domUptimeEl) domUptimeEl.textContent = `${tel.domUptimeSeconds || 0}s`;
+
+  const provLatEl = document.getElementById('tel-prov-lat');
+  if (provLatEl) provLatEl.textContent = `${(tel.avgProviderLatencyMs || 0).toFixed(2)}ms`;
+
+  const notifLatEl = document.getElementById('tel-notif-lat');
+  if (notifLatEl) notifLatEl.textContent = `${(tel.avgNotificationLatencyMs || 0).toFixed(0)}ms`;
+
+  const selFailsEl = document.getElementById('tel-selector-fails');
+  if (selFailsEl) selFailsEl.textContent = tel.selectorFailures || 0;
+
+  const replayPerfEl = document.getElementById('tel-replay-perf');
+  if (replayPerfEl) {
+    const perf = tel.replayPerformance || {};
+    replayPerfEl.textContent = `${(perf.avgTickProcessingTimeMs || 0).toFixed(3)}ms`;
   }
 }
 

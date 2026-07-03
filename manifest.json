@@ -70,7 +70,8 @@
         "discovery/websocket.js",
         "discovery/pixijs.js",
         "discovery/storage.js",
-        "discovery/globals.js"
+        "discovery/globals.js",
+        "plugins/**/*"
       ],
       "matches": [
         "https://qxbroker.com/*",
