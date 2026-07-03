@@ -3,7 +3,7 @@
  * Supports log schema versioning and JSONL formatting.
  */
 
-import { saveCandle, getCandleCount, saveLog } from '../storage/db.js';
+import { saveCandle, getCandleCount, saveLog, pruneDatabase } from '../storage/db.js';
 
 export class AppLogger {
   constructor(db) {
@@ -38,6 +38,11 @@ export class AppLogger {
       };
 
       await saveCandle(this.db, versioned);
+      
+      // Periodically prune database to restrict total allocation size
+      if (this.cachedStats.totalLogged > 0 && this.cachedStats.totalLogged % 100 === 0) {
+        pruneDatabase(this.db);
+      }
 
       // Update statistics
       this.cachedStats.totalLogged++;

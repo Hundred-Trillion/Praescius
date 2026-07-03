@@ -188,3 +188,71 @@ export function clearDatabase(db) {
     transaction.onerror = (e) => reject(e.target.error);
   });
 }
+
+/**
+ * Prunes older entries from database stores to restrict disk allocation.
+ * @param {IDBDatabase} db 
+ * @param {number} maxCandles 
+ * @param {number} maxLogs 
+ * @returns {Promise<void>}
+ */
+export function pruneDatabase(db, maxCandles = 5000, maxLogs = 2000) {
+  return new Promise((resolve) => {
+    const transaction = db.transaction([STORE_CANDLES, STORE_LOGS], 'readwrite');
+    
+    // Prune Candles
+    const candleStore = transaction.objectStore(STORE_CANDLES);
+    const candleIndex = candleStore.index('timestamp');
+    let candleCount = 0;
+    
+    candleIndex.openKeyCursor(null, 'next').onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        candleCount++;
+        cursor.continue();
+      } else {
+        if (candleCount > maxCandles) {
+          const deleteCount = candleCount - maxCandles;
+          let deleted = 0;
+          candleIndex.openCursor(null, 'next').onsuccess = (ev) => {
+            const cur = ev.target.result;
+            if (cur && deleted < deleteCount) {
+              cur.delete();
+              deleted++;
+              cur.continue();
+            }
+          };
+        }
+      }
+    };
+
+    // Prune Logs
+    const logStore = transaction.objectStore(STORE_LOGS);
+    const logIndex = logStore.index('timestamp');
+    let logCount = 0;
+
+    logIndex.openKeyCursor(null, 'next').onsuccess = (event) => {
+      const cursor = event.target.result;
+      if (cursor) {
+        logCount++;
+        cursor.continue();
+      } else {
+        if (logCount > maxLogs) {
+          const deleteCount = logCount - maxLogs;
+          let deleted = 0;
+          logIndex.openCursor(null, 'next').onsuccess = (ev) => {
+            const cur = ev.target.result;
+            if (cur && deleted < deleteCount) {
+              cur.delete();
+              deleted++;
+              cur.continue();
+            }
+          };
+        }
+      }
+    };
+
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => resolve();
+  });
+}
