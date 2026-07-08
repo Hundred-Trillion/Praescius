@@ -28,6 +28,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const geminiKeyInput = document.getElementById('api-key-gemini');
   const openaiKeyInput = document.getElementById('api-key-openai');
   
+  const geminiModelSelect = document.getElementById('model-gemini');
+  const openaiModelSelect = document.getElementById('model-openai');
+  
   const notifyCheck = document.getElementById('toggle-notifications');
   const loggingCheck = document.getElementById('toggle-logging');
 
@@ -42,6 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (providerSelect) providerSelect.value = settings.aiProvider || 'local';
     if (geminiKeyInput) geminiKeyInput.value = settings.geminiKey || '';
     if (openaiKeyInput) openaiKeyInput.value = settings.openaiKey || '';
+    if (geminiModelSelect) geminiModelSelect.value = settings.geminiModel || 'gemini-2.5-flash';
+    if (openaiModelSelect) openaiModelSelect.value = settings.openaiModel || 'gpt-4o-mini';
     if (notifyCheck) notifyCheck.checked = settings.notificationsEnabled !== false;
     if (loggingCheck) loggingCheck.checked = settings.loggingEnabled !== false;
 
@@ -59,6 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
       aiProvider: providerSelect.value,
       geminiKey: geminiKeyInput.value.trim(),
       openaiKey: openaiKeyInput.value.trim(),
+      geminiModel: geminiModelSelect.value,
+      openaiModel: openaiModelSelect.value,
       notificationsEnabled: notifyCheck.checked,
       loggingEnabled: loggingCheck.checked
     };

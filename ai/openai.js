@@ -78,7 +78,7 @@ export class OpenAIClass extends BaseAI {
     super('openai');
   }
 
-  async translatePrompt(apiKey, promptText) {
+  async translatePrompt(apiKey, promptText, model = 'gpt-4o-mini') {
     if (!apiKey) {
       throw new Error('OpenAI API Key is missing. Configure it in settings.');
     }
@@ -86,7 +86,7 @@ export class OpenAIClass extends BaseAI {
     const url = 'https://api.openai.com/v1/chat/completions';
     
     const payload = {
-      model: 'gpt-4o-mini',
+      model: model,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM_INSTRUCTION },
@@ -117,7 +117,7 @@ export class OpenAIClass extends BaseAI {
     return JSON.parse(content.trim());
   }
 
-  async summarizeNotification(apiKey, summary) {
+  async summarizeNotification(apiKey, summary, model = 'gpt-4o-mini') {
     if (!apiKey) {
       throw new Error('OpenAI API Key is missing.');
     }
@@ -130,7 +130,7 @@ Generate a highly professional, concise natural language alert notification mess
 `;
 
     const payload = {
-      model: 'gpt-4o-mini',
+      model: model,
       messages: [
         { role: 'system', content: instruction },
         { role: 'user', content: `Summarize this alert JSON: ${JSON.stringify(summary)}` }

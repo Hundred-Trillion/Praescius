@@ -90,11 +90,12 @@ function evaluateActiveRules(symbol, tabId, isHistorical = false) {
 
         const provider = settings.aiProvider || 'local';
         const apiKey = provider === 'gemini' ? settings.geminiKey : provider === 'openai' ? settings.openaiKey : '';
+        const modelName = provider === 'gemini' ? (settings.geminiModel || 'gemini-2.5-flash') : provider === 'openai' ? (settings.openaiModel || 'gpt-4o-mini') : undefined;
         
         let alertText = '';
         const tStartNotif = performance.now();
         try {
-          alertText = await aiManager.summarizeNotification(provider, apiKey, summary);
+          alertText = await aiManager.summarizeNotification(provider, apiKey, summary, modelName);
         } catch (e) {
           alertText = `Rule: "${rule.name}" met.\nPrice: ${latestPrice.toLocaleString()}\nTime: ${new Date().toLocaleTimeString()}`;
         }

@@ -228,9 +228,10 @@ const COMMAND_HANDLERS = {
       const provider = settings.aiProvider || 'local';
       const apiKey = provider === 'gemini' ? settings.geminiKey : 
                      provider === 'openai' ? settings.openaiKey : '';
+      const modelName = provider === 'gemini' ? (settings.geminiModel || 'gemini-2.5-flash') : provider === 'openai' ? (settings.openaiModel || 'gpt-4o-mini') : undefined;
                      
       try {
-        const rawRule = await aiManager.translate(provider, apiKey, promptText);
+        const rawRule = await aiManager.translate(provider, apiKey, promptText, modelName);
         const compiledRule = compileRule(rawRule);
         sendResponse({ success: true, rule: compiledRule });
       } catch (err) {

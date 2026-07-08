@@ -23,9 +23,9 @@ class AIManager {
    * @param {string} promptText 
    * @returns {Promise<object>}
    */
-  async translate(providerName, apiKey, promptText) {
+  async translate(providerName, apiKey, promptText, modelName) {
     const provider = this.providers[providerName] || this.providers['local'];
-    return await provider.translatePrompt(apiKey, promptText);
+    return await provider.translatePrompt(apiKey, promptText, modelName);
   }
 
   /**
@@ -35,15 +35,15 @@ class AIManager {
    * @param {object} summary 
    * @returns {Promise<string>}
    */
-  async summarizeNotification(providerName, apiKey, summary) {
+  async summarizeNotification(providerName, apiKey, summary, modelName) {
     const provider = this.providers[providerName] || this.providers['local'];
     if (providerName === 'local' || !apiKey) {
-      return await this.providers['local'].summarizeNotification('', summary);
+      return await this.providers['local'].summarizeNotification('', summary, modelName);
     }
     try {
-      return await provider.summarizeNotification(apiKey, summary);
+      return await provider.summarizeNotification(apiKey, summary, modelName);
     } catch (err) {
-      return await this.providers['local'].summarizeNotification('', summary);
+      return await this.providers['local'].summarizeNotification('', summary, modelName);
     }
   }
 }

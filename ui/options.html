@@ -241,8 +241,16 @@
           <div id="gemini-key-group" class="api-key-group">
             <div class="input-container">
               <label for="api-key-gemini">Google Gemini API Key</label>
-              <input type="password" id="api-key-gemini" class="text-input" placeholder="AIzaSy..." style="width: 100%;">
+              <input type="password" id="api-key-gemini" class="text-input" placeholder="AIzaSy..." style="width: 100%; margin-bottom: 8px;">
               
+              <label for="model-gemini">Select Model</label>
+              <select id="model-gemini" class="text-input" style="width: 100%;">
+                <option value="gemini-2.5-flash">gemini-2.5-flash (Default - Free)</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro (Advanced)</option>
+                <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+                <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+              </select>
+
               <div style="background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; padding: 16px; margin-top: 14px; font-size: 0.75rem; color: #000000; line-height: 1.5; box-shadow: 2px 2px 0px #000000;">
                 <strong style="color: #000000; font-weight: 900; display: flex; align-items: center; gap: 6px; margin-bottom: 10px; text-transform: uppercase;">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -266,7 +274,16 @@
           <div id="openai-key-group" class="api-key-group">
             <div class="input-container">
               <label for="api-key-openai">OpenAI API Key</label>
-              <input type="password" id="api-key-openai" class="text-input" placeholder="sk-proj-..." style="width: 100%;">
+              <input type="password" id="api-key-openai" class="text-input" placeholder="sk-proj-..." style="width: 100%; margin-bottom: 8px;">
+              
+              <label for="model-openai">Select Model</label>
+              <select id="model-openai" class="text-input" style="width: 100%;">
+                <option value="gpt-4o-mini">gpt-4o-mini (Default - Fast)</option>
+                <option value="gpt-4o">gpt-4o (Advanced)</option>
+                <option value="gpt-4-turbo">gpt-4-turbo</option>
+                <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+              </select>
+
               <span style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; display: block; font-style: italic;">
                 Requires standard API balance credits. Key is stored locally in your browser.
               </span>
