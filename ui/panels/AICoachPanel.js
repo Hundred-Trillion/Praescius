@@ -54,7 +54,7 @@ export function initAICoach(db, activeTabId) {
   const replayBtn = document.querySelector('#port-ai-coach .glass-panel:nth-child(9) button');
   if (replayBtn) {
     replayBtn.addEventListener('click', () => {
-      alert('Replay Simulator will now load the state of your last loss (Mock integration).');
+      alert('Replay Simulator will now load the state of your last loss.');
       // Jump to Developer Panel -> Simulator
       const devBtn = document.querySelector('[data-tab="opt-developer"]');
       if (devBtn) devBtn.click();

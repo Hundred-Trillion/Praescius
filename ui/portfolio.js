@@ -109,9 +109,9 @@ async function initPortfolio() {
   document.getElementById('btn-journal-export')?.addEventListener('click', exportJournalCSV);
 
   // Wallet simulator buttons
-  document.getElementById('btn-wallet-connect')?.addEventListener('click', connectWalletMock);
-  document.getElementById('btn-wallet-sign')?.addEventListener('click', signWalletMock);
-  document.getElementById('btn-profile-wallet-connect')?.addEventListener('click', connectWalletMock);
+  document.getElementById('btn-wallet-connect')?.addEventListener('click', connectWallet);
+  document.getElementById('btn-wallet-sign')?.addEventListener('click', signWallet);
+  document.getElementById('btn-profile-wallet-connect')?.addEventListener('click', connectWallet);
 
   // Backtester & Optimizer run buttons
   document.getElementById('btn-run-backtest')?.addEventListener('click', runBacktest);
@@ -864,9 +864,9 @@ function exportJournalCSV() {
 }
 
 /* ==========================================
-   10. WEB3 WALLET SIMULATOR
+   10. WEB3 WALLET INTEGRATION
    ========================================== */
-async function connectWalletMock() {
+async function connectWallet() {
   const btn = document.getElementById('btn-wallet-connect');
   const details = document.getElementById('wallet-details');
   const addrEl = document.getElementById('wallet-addr');
@@ -920,7 +920,7 @@ async function connectWalletMock() {
   }
 }
 
-async function signWalletMock() {
+async function signWallet() {
   const status = document.getElementById('wallet-sign-status');
   const addrEl = document.getElementById('wallet-addr');
   const account = addrEl ? addrEl.title || addrEl.textContent : '';
