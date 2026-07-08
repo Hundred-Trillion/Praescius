@@ -87,6 +87,69 @@ export async function updateAICoach(candles, currentSymbol, journalLogs) {
 
   // 7. Multi-Chart Scanner
   updateMultiChartScanner();
+
+  // 8. News Impact Filter
+  updateNewsFilter();
+}
+
+async function updateNewsFilter() {
+  const panel = document.querySelector('#port-ai-coach .glass-panel:nth-child(8) > div:last-child');
+  if (!panel) return;
+
+  try {
+    const res = await new Promise(resolve => chrome.storage.local.get(['ff_news_cache', 'ff_news_time'], resolve));
+    const now = Date.now();
+    let newsData = [];
+
+    // Cache for 1 hour (3600000 ms)
+    if (res.ff_news_cache && res.ff_news_time && (now - res.ff_news_time < 3600000)) {
+      newsData = res.ff_news_cache;
+    } else {
+      const response = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json');
+      if (!response.ok) throw new Error('Fetch failed');
+      newsData = await response.json();
+      chrome.storage.local.set({ ff_news_cache: newsData, ff_news_time: now });
+    }
+
+    // Filter high impact news today
+    const upcoming = newsData.filter(item => {
+      if (item.impact !== 'High') return false;
+      const itemDate = new Date(item.date).getTime();
+      // Only care if it's within the next 4 hours
+      return itemDate > now && itemDate < (now + 4 * 3600000);
+    });
+
+    if (upcoming.length > 0) {
+      // Sort by closest first
+      upcoming.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const nextEvent = upcoming[0];
+      const minsAway = Math.round((new Date(nextEvent.date).getTime() - now) / 60000);
+
+      panel.innerHTML = `
+        <div style="font-size: 1.1rem; text-transform: uppercase; margin-bottom: 4px;">Avoid trading ${nextEvent.country}!</div>
+        <div>High-impact <strong>${nextEvent.title}</strong> release in ${minsAway} minutes.</div>
+        <div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.8;">Markets will be highly volatile. Forecast: ${nextEvent.forecast || 'N/A'}</div>
+      `;
+      panel.style.background = 'var(--warning)';
+      panel.style.color = '#000';
+    } else {
+      panel.innerHTML = `
+        <div style="font-size: 1.1rem; text-transform: uppercase; margin-bottom: 4px;">Clear Skies</div>
+        <div>No high-impact news in the next 4 hours.</div>
+        <div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.8;">Safe to trade technicals.</div>
+      `;
+      panel.style.background = 'var(--success)';
+      panel.style.color = '#FFF';
+    }
+  } catch (err) {
+    panel.innerHTML = `
+      <div style="font-size: 1.1rem; text-transform: uppercase; margin-bottom: 4px;">News Offline</div>
+      <div>Unable to reach ForexFactory.</div>
+      <div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.8;">${err.message}</div>
+    `;
+    panel.style.background = 'rgba(255,255,255,0.1)';
+    panel.style.color = 'var(--text-muted)';
+  }
 }
 
 async function updateMultiChartScanner() {
