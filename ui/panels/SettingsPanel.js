@@ -37,9 +37,18 @@ export function initInstantAIConfig() {
     });
   };
 
-  if (keyInput) keyInput.addEventListener('input', saveSettings);
-  if (tgTokenInput) tgTokenInput.addEventListener('input', saveSettings);
-  if (tgChatIdInput) tgChatIdInput.addEventListener('input', saveSettings);
+  const saveBtn = document.getElementById('btn-save-popup');
+  const saveStatus = document.getElementById('save-status-popup');
+
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      saveSettings();
+      if (saveStatus) {
+        saveStatus.style.display = 'block';
+        setTimeout(() => saveStatus.style.display = 'none', 2500);
+      }
+    });
+  }
 }
 
 export async function handleClearDB() {
