@@ -89,7 +89,13 @@ export function renderRules() {
 
       const desc = document.createElement('div');
       desc.className = 'item-desc';
-      desc.textContent = rule.originalPrompt || JSON.stringify(rule.conditions);
+      let statsText = '';
+      if (rule.stats) {
+        const totalTrades = rule.stats.wins + rule.stats.losses;
+        const wr = totalTrades > 0 ? ((rule.stats.wins / totalTrades) * 100).toFixed(0) : 0;
+        statsText = `<div style="margin-top: 4px; font-weight: bold; font-size: 0.7rem; color: var(--primary);">Win Rate: ${wr}% | Max DD: ${rule.stats.maxDd.toFixed(2)}% | PnL: ${rule.stats.totalPnl.toFixed(2)}%</div>`;
+      }
+      desc.innerHTML = (rule.originalPrompt || JSON.stringify(rule.conditions)) + statsText;
 
       main.appendChild(title);
       main.appendChild(desc);

@@ -479,22 +479,26 @@ input:checked + .slider:before {
 
 /* High Contrast Terminals */
 .log-terminal {
-  background: #000000;
+  background: #0A0D14;
   border: 2px solid #000000;
+  border-left: 4px solid var(--success);
   border-radius: 4px;
-  padding: 12px;
+  padding: 14px;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 0.72rem;
-  max-height: 160px;
+  font-size: 0.75rem;
+  min-height: 120px;
+  max-height: 180px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  box-shadow: 3px 3px 0px #000000;
+  gap: 6px;
+  box-shadow: inset 0px 0px 10px rgba(0,255,102,0.1), 3px 3px 0px #000000;
 }
 
 .log-line {
-  color: #FFFFFF;
+  color: var(--success);
+  line-height: 1.4;
+  word-wrap: break-word;
 }
 
 .log-line.error {

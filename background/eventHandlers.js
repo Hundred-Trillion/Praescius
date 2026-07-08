@@ -18,11 +18,10 @@ import AlertEngine from '../engine/AlertEngine.js';
 import { getDB } from './lifecycle.js';
 import {
   sessions,
-  candleCache,
   ruleCooldowns,
   latestWsPrices,
   adaptiveConfidences,
-  activeBuildingCandles,
+  activePositions,
   globalState
 } from './state.js';
 
@@ -38,50 +37,11 @@ const alertEngine = new AlertEngine(showNotification, (event, data) => eventBus.
 const CACHE_LIMIT = 200;
 const COOLDOWN_MS = 60 * 1000;
 
-function aggregateTickTo1m(tick) {
-  if (tick.timeframe !== 'tick') return null;
+import { tickAggregator } from '../core/TickAggregator.js';
 
-  const tabId = tick.tabId || 'default';
-  const symbol = tick.symbol;
-  const key = `${tabId}_${symbol}`;
-  const now = tick.timestamp;
-  
-  const minuteBucket = Math.floor(now / 60000) * 60000;
-  let building = activeBuildingCandles[key];
-
-  if (!building || minuteBucket > building.timestamp) {
-    building = {
-      schema: 1,
-      provider: tick.provider,
-      symbol: tick.symbol,
-      timestamp: minuteBucket,
-      open: tick.price,
-      high: tick.price,
-      low: tick.price,
-      close: tick.price,
-      price: tick.price,
-      volume: tick.volume || 0,
-      timeframe: '1m',
-      source: 'tick_aggregator',
-      tabId: tabId
-    };
-    activeBuildingCandles[key] = building;
-  } else {
-    building.high = Math.max(building.high, tick.price);
-    building.low = Math.min(building.low, tick.price);
-    building.close = tick.price;
-    building.price = tick.price;
-    building.volume += tick.volume || 0;
-  }
-
-  return { ...building };
-}
-
-function evaluateActiveRules(symbol, timeframe, tabId, isHistorical) {
-  if (isHistorical) return;
-
-  const key = `${tabId}_${symbol}_${timeframe}`;
-  const cache = candleCache[key];
+function evaluateActiveRules(symbol, tabId, isHistorical = false) {
+  if (isHistorical || globalState.killSwitch) return;
+  const cache = tickAggregator.getCandles(symbol);
   if (!cache || cache.length < 5) return;
 
   chrome.storage.local.get(['rules', 'settings'], async (res) => {
@@ -108,78 +68,28 @@ function evaluateActiveRules(symbol, timeframe, tabId, isHistorical) {
         const latestCandle = cache[cache.length - 1];
         const latestPrice = latestCandle.close;
         const confidence = latestCandle.confidence || 1.0;
-        const trend = latestPrice > cache[cache.length - 5].close ? 'bullish' : 'bearish';
+        const trend = latestPrice > cache[Math.max(0, cache.length - 5)].close ? 'bullish' : 'bearish';
         
-        let rsi = null;
-        let ema9 = null;
-        let ema21 = null;
-        let sma20 = null;
-        let macd = null;
-
-        try {
-          const rsiVals = rsiCalculator.calculate(cache, { period: 14 });
-          const r = rsiVals[rsiVals.length - 1];
-          if (typeof r === 'number') rsi = Number(r.toFixed(2));
-        } catch (e) {}
-
-        try {
-          const ema9Vals = emaCalculator.calculate(cache, { period: 9 });
-          const e9 = ema9Vals[ema9Vals.length - 1];
-          if (typeof e9 === 'number') ema9 = Number(e9.toFixed(2));
-        } catch (e) {}
-
-        try {
-          const ema21Vals = emaCalculator.calculate(cache, { period: 21 });
-          const e21 = ema21Vals[ema21Vals.length - 1];
-          if (typeof e21 === 'number') ema21 = Number(e21.toFixed(2));
-        } catch (e) {}
-
-        try {
-          const sma20Vals = smaCalculator.calculate(cache, { period: 20 });
-          const s20 = sma20Vals[sma20Vals.length - 1];
-          if (typeof s20 === 'number') sma20 = Number(s20.toFixed(2));
-        } catch (e) {}
-
-        try {
-          const macdVals = macdCalculator.calculate(cache);
-          const mObj = macdVals[macdVals.length - 1];
-          if (mObj && typeof mObj.macd === 'number') {
-            macd = {
-              macd: Number(mObj.macd.toFixed(4)),
-              signal: Number(mObj.signal.toFixed(4)),
-              histogram: Number(mObj.histogram.toFixed(4))
-            };
-          }
-        } catch (e) {}
+        let rsi = null, ema9 = null, ema21 = null, sma20 = null, macd = null;
+        try { const r = rsiCalculator.calculate(cache, { period: 14 }).pop(); if (typeof r === 'number') rsi = Number(r.toFixed(2)); } catch(e){}
+        try { const e = emaCalculator.calculate(cache, { period: 9 }).pop(); if (typeof e === 'number') ema9 = Number(e.toFixed(2)); } catch(e){}
+        try { const e = emaCalculator.calculate(cache, { period: 21 }).pop(); if (typeof e === 'number') ema21 = Number(e.toFixed(2)); } catch(e){}
+        try { const s = smaCalculator.calculate(cache, { period: 20 }).pop(); if (typeof s === 'number') sma20 = Number(s.toFixed(2)); } catch(e){}
+        try { 
+          const m = macdCalculator.calculate(cache).pop(); 
+          if (m && typeof m.macd === 'number') macd = { macd: Number(m.macd.toFixed(4)), signal: Number(m.signal.toFixed(4)), histogram: Number(m.histogram.toFixed(4)) };
+        } catch(e){}
 
         const mlConfidence = getMLConfidenceReport(cache, rule, confidence);
-
         const summary = {
-          symbol,
-          trend,
-          triggerRule: rule.name,
-          lastPrice: latestPrice,
-          confidence: mlConfidence.aggregateScore,
-          mlConfidenceDetails: mlConfidence,
+          symbol, trend, triggerRule: rule.name, lastPrice: latestPrice,
+          confidence: mlConfidence.aggregateScore, mlConfidenceDetails: mlConfidence,
           timestamp: now,
-          context: {
-            last20Ticks: cache.slice(-20).map(c => ({
-              t: Math.floor(c.timestamp / 1000),
-              p: c.price,
-              src: c.source || 'ws',
-              conf: Number(c.confidence || 1.0)
-            })),
-            rsi,
-            ema9,
-            ema21,
-            sma20,
-            macd
-          }
+          context: { last20Ticks: [], rsi, ema9, ema21, sma20, macd }
         };
 
         const provider = settings.aiProvider || 'local';
-        const apiKey = provider === 'gemini' ? settings.geminiKey : 
-                       provider === 'openai' ? settings.openaiKey : '';
+        const apiKey = provider === 'gemini' ? settings.geminiKey : provider === 'openai' ? settings.openaiKey : '';
         
         let alertText = '';
         const tStartNotif = performance.now();
@@ -188,58 +98,34 @@ function evaluateActiveRules(symbol, timeframe, tabId, isHistorical) {
         } catch (e) {
           alertText = `Rule: "${rule.name}" met.\nPrice: ${latestPrice.toLocaleString()}\nTime: ${new Date().toLocaleTimeString()}`;
         }
-        const tEndNotif = performance.now();
-        telemetry.recordNotificationLatency(tEndNotif - tStartNotif);
+        telemetry.recordNotificationLatency(performance.now() - tStartNotif);
 
-        const title = `${symbol} [V2 Alert]`;
-        showNotification(title, alertText);
+        showNotification(`${symbol} [V2 Alert]`, alertText);
 
-        eventBus.publish('market.rule.trigger.v1', {
-          ruleId,
-          ruleName: rule.name,
-          symbol,
-          price: latestPrice,
-          mlConfidence,
+        activePositions[ruleId] = {
+          entryPrice: latestPrice,
+          direction: trend === 'bullish' ? 1 : -1,
           timestamp: now,
-          tabId
-        });
+          symbol: symbol
+        };
 
-        eventBus.publish('market.ai.summary.v1', {
-          ruleId,
-          alertText,
-          provider,
-          timestamp: now,
-          tabId
-        });
-
-        eventBus.publish('system.logs.v1', {
-          message: `Rule triggered: "${rule.name}" (Aggregate Confidence: ${(mlConfidence.aggregateScore * 100).toFixed(0)}%)`,
-          type: 'info',
-          tabId,
-          provider: latestCandle.provider
-        });
+        eventBus.publish('market.rule.trigger.v1', { ruleId, ruleName: rule.name, symbol, price: latestPrice, mlConfidence, timestamp: now, tabId });
+        eventBus.publish('market.ai.summary.v1', { ruleId, alertText, provider, timestamp: now, tabId });
+        eventBus.publish('system.logs.v1', { message: `Rule triggered: "${rule.name}" (Aggregate Confidence: ${(mlConfidence.aggregateScore * 100).toFixed(0)}%)`, type: 'info', tabId, provider: latestCandle.provider || 'ws' });
       }
     }
   });
 }
 
-function evaluateCustomStrategies(symbol, timeframe, tabId, isHistorical) {
-  if (isHistorical) return;
-
-  const candleKey = `${tabId}_${symbol}_${timeframe}`;
-  const tickKey = `${tabId}_${symbol}_tick`;
-  const cache = candleCache[candleKey];
-  const ticks = candleCache[tickKey] || [];
-
+function evaluateCustomStrategies(symbol, tabId, isHistorical = false) {
+  if (isHistorical || globalState.killSwitch) return;
+  const cache = tickAggregator.getCandles(symbol);
   if (!cache || cache.length === 0) return;
 
   chrome.storage.local.get(['activeStrategies', 'settings'], (res) => {
-    const activeStrategies = res.activeStrategies || {};
-    const settings = res.settings || {};
-
     try {
-      const consensusResult = ConsensusEngine.evaluate(cache, ticks, activeStrategies);
-      alertEngine.process(tabId, symbol, timeframe, consensusResult, settings);
+      const consensusResult = ConsensusEngine.evaluate(cache, [], res.activeStrategies || {});
+      alertEngine.process(tabId, symbol, '1m', consensusResult, res.settings || {});
     } catch (err) {
       console.error(`[ConsensusEngine] Error running consensus:`, err);
     }
@@ -259,9 +145,7 @@ export function registerEventHandlers() {
       if (!provider) return;
 
       const candle = provider.parse(event.payload, event.direction || 'incoming');
-      const tEnd = performance.now();
-      
-      telemetry.recordProviderLatency(tEnd - tStart);
+      telemetry.recordProviderLatency(performance.now() - tStart);
 
       if (candle) {
         candle.source = candle.source || 'ws';
@@ -272,14 +156,7 @@ export function registerEventHandlers() {
         eventBus.publish('market.candle.v1', candle);
 
         if (event.tabId && event.tabId !== 'default') {
-          chrome.tabs.sendMessage(event.tabId, {
-            action: 'VALID_WS_TICK',
-            timestamp: Date.now()
-          }, () => {
-            if (chrome.runtime.lastError) {
-              // ignore
-            }
-          });
+          chrome.tabs.sendMessage(event.tabId, { action: 'VALID_WS_TICK', timestamp: Date.now() }, () => { if (chrome.runtime.lastError) {} });
         }
       }
     } catch (err) {
@@ -288,12 +165,32 @@ export function registerEventHandlers() {
     }
   });
 
-  // 2. Parsed Candle handler -> Cache, DB, Rule evaluation
+  // 2. Parsed Candle handler -> TickAggregator
   eventBus.subscribe('market.candle.v1', async (candle) => {
     const symbol = candle.symbol;
-    const tf = candle.timeframe;
     const tabId = candle.tabId || 'default';
-    const key = `${tabId}_${symbol}_${tf}`;
+
+    if (candle.timeframe !== 'tick') {
+      if (candle.source === 'replay_engine' || candle.isHistorical) {
+        if (candle.source === 'replay_engine') {
+          stateMachine.transitionTo('REPLAY');
+          telemetry.endWsSession();
+          telemetry.endDomSession();
+        }
+        
+        tickAggregator.pushCompletedCandle(candle);
+        
+        chrome.runtime.sendMessage({
+          action: 'CANDLE_UPDATE',
+          candle: candle,
+          tabId: tabId
+        }, () => { if (chrome.runtime.lastError) {} });
+
+        evaluateActiveRules(symbol, tabId, candle.isHistorical);
+        evaluateCustomStrategies(symbol, tabId, candle.isHistorical);
+      }
+      return;
+    }
 
     if (candle.source && candle.source.startsWith('dom')) {
       stateMachine.transitionTo('LIVE_DOM');
@@ -312,8 +209,6 @@ export function registerEventHandlers() {
         const delta = Math.abs(lastWs.price - candle.price);
         const pctDelta = delta / lastWs.price;
         
-        console.log(`[Praescius Validation] ${symbol} | WS: ${lastWs.price} | DOM: ${candle.price} | Delta: ${delta.toFixed(4)} (${(pctDelta * 100).toFixed(4)}%)`);
-        
         if (pctDelta < 0.0005) {
           adaptiveConfidences[sourceKey] = Math.min(0.99, adaptiveConfidences[sourceKey] + 0.001);
         } else if (pctDelta > 0.005) {
@@ -326,6 +221,10 @@ export function registerEventHandlers() {
       telemetry.endWsSession();
       telemetry.endDomSession();
     } else {
+      stateMachine.transitionTo('LIVE_WS');
+      telemetry.startWsSession();
+      telemetry.endDomSession();
+
       const wsPriceKey = `${tabId}_${symbol}`;
       latestWsPrices[wsPriceKey] = {
         price: candle.price,
@@ -333,66 +232,73 @@ export function registerEventHandlers() {
       };
     }
 
-    if (globalState.appLogger) {
-      await globalState.appLogger.logTickComparison(symbol, candle.price, candle.source || 'ws', candle.confidence || 1.0, candle.provider, tabId);
-    }
+    const { minuteChanged } = tickAggregator.onTick(candle);
+    const latestCandle = tickAggregator.getLatestCandle(symbol);
 
-    if (!candleCache[key]) {
-      candleCache[key] = [];
-    }
-
-    const cache = candleCache[key];
-    const lastIndex = cache.length - 1;
-
-    if (lastIndex >= 0 && cache[lastIndex].timestamp === candle.timestamp) {
-      cache[lastIndex] = candle;
-    } else {
-      if (lastIndex >= 0 && tf !== 'tick') {
-        const completedCandle = cache[lastIndex];
-        chrome.storage.local.get(['settings'], async (res) => {
-          if (res.settings?.loggingEnabled !== false && globalState.appLogger) {
-            await globalState.appLogger.logCandle(completedCandle);
-          }
-        });
-      }
-
-      cache.push(candle);
-      if (cache.length > CACHE_LIMIT) {
-        cache.shift();
-      }
-      
-      if (tf === 'tick') {
-        chrome.storage.local.get(['settings'], async (res) => {
-          if (res.settings?.loggingEnabled !== false && globalState.appLogger) {
-            await globalState.appLogger.logCandle(candle);
-          }
-        });
-      }
+    const stream = tickAggregator.streams.get(symbol);
+    if (stream && stream.indicators && latestCandle) {
+      latestCandle.ema9 = stream.indicators.ema9;
+      latestCandle.ema21 = stream.indicators.ema21;
+      latestCandle.regime = stream.indicators.regime;
     }
 
     chrome.runtime.sendMessage({
       action: 'CANDLE_UPDATE',
-      candle: candle,
+      candle: latestCandle,
       tabId: tabId
-    }, () => {
-      if (chrome.runtime.lastError) {
-        // ignore
-      }
-    });
+    }, () => { if (chrome.runtime.lastError) {} });
 
-    evaluateActiveRules(symbol, tf, tabId, candle.isHistorical);
-    evaluateCustomStrategies(symbol, tf, tabId, candle.isHistorical);
+    if (minuteChanged) {
+      const buffer = tickAggregator.getCandles(symbol);
+      const completedCandle = buffer.length > 1 ? buffer[buffer.length - 2] : null;
 
-    if (tf === 'tick') {
-      const aggKey = `${tabId}_${symbol}`;
-      const now = Date.now();
-      if (!aggregationThrottle[aggKey] || now - aggregationThrottle[aggKey] > 1000) {
-        aggregationThrottle[aggKey] = now;
-        const aggregated1m = aggregateTickTo1m(candle);
-        if (aggregated1m) {
-          eventBus.publish('market.candle.v1', aggregated1m);
+      if (buffer.length > 21 && stream) {
+        let ema9 = null, ema21 = null, rsi = null;
+        try { ema9 = emaCalculator.calculate(buffer, { period: 9 }).pop(); } catch(e){}
+        try { ema21 = emaCalculator.calculate(buffer, { period: 21 }).pop(); } catch(e){}
+        try { rsi = rsiCalculator.calculate(buffer, { period: 14 }).pop(); } catch(e){}
+        
+        let regime = 'Neutral';
+        if (rsi !== null) {
+          if (rsi > 65) regime = 'Bull Trend (High Vol)';
+          else if (rsi < 35) regime = 'Bear Trend (High Vol)';
+          else regime = 'Ranging Chop (Low Vol)';
         }
+        stream.indicators = { ema9, ema21, regime };
       }
+      
+      const now = Date.now();
+      chrome.storage.local.get(['rules', 'settings'], async (res) => {
+        const rules = res.rules || [];
+        let rulesUpdated = false;
+        
+        for (const [rId, pos] of Object.entries(activePositions)) {
+          if (now - pos.timestamp >= 5 * 60 * 1000) {
+            const r = rules.find(ru => ru.id === rId);
+            if (r && latestCandle) {
+              const pnl = ((latestCandle.close - pos.entryPrice) / pos.entryPrice) * pos.direction * 100;
+              r.stats = r.stats || { wins: 0, losses: 0, totalPnl: 0, maxDd: 0 };
+              if (pnl > 0) r.stats.wins += 1;
+              else r.stats.losses += 1;
+              r.stats.totalPnl += pnl;
+              if (pnl < r.stats.maxDd) r.stats.maxDd = pnl;
+              rulesUpdated = true;
+            }
+            delete activePositions[rId];
+          }
+        }
+        
+        if (rulesUpdated) {
+          chrome.storage.local.set({ rules });
+        }
+
+        if (res.settings?.loggingEnabled !== false && globalState.appLogger && completedCandle) {
+          await globalState.appLogger.logCandle(completedCandle);
+        }
+      });
+
+      evaluateActiveRules(symbol, tabId, false);
+      evaluateCustomStrategies(symbol, tabId, false);
     }
   });
 

@@ -43,7 +43,7 @@ export function updateLiveMonitor(candle) {
   if (symEl) symEl.textContent = candle.symbol;
   if (!priceEl) return;
 
-  const cur = candle.price;
+  const cur = candle.price !== undefined ? candle.price : candle.close;
   priceEl.textContent = cur.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 10 });
 
   if (lastPrice !== null && lastPrice !== cur) {
@@ -64,9 +64,34 @@ export function updateLiveMonitor(candle) {
 
   const changeEl = document.getElementById('live-change');
   if (changeEl && candle.open) {
-    const chg = ((candle.price - candle.open) / candle.open) * 100;
-    changeEl.textContent = (chg > 0 ? '+' : '') + chg.toFixed(2) + '%';
+    const chg = ((cur - candle.open) / candle.open) * 100;
+    changeEl.textContent = (chg > 0 ? '+' : '') + chg.toFixed(5) + '%';
     changeEl.style.color = chg >= 0 ? 'var(--success)' : 'var(--danger)';
+  }
+
+  const ohlcEl = document.getElementById('live-ohlc');
+  if (ohlcEl && candle.open !== undefined) {
+    ohlcEl.textContent = `O:${candle.open.toFixed(6)} H:${candle.high.toFixed(6)} L:${candle.low.toFixed(6)} C:${candle.close.toFixed(6)}`;
+  }
+  
+  const tickVolEl = document.getElementById('live-tick-vol');
+  if (tickVolEl && candle.volume !== undefined) {
+    tickVolEl.textContent = `${candle.volume} ticks`;
+  }
+  
+  const emaEl = document.getElementById('live-ema');
+  if (emaEl && candle.ema9 !== undefined && candle.ema21 !== undefined) {
+    const trendText = candle.ema9 > candle.ema21 ? 'Bullish (9>21)' : (candle.ema9 < candle.ema21 ? 'Bearish (9<21)' : 'Neutral');
+    const color = candle.ema9 > candle.ema21 ? 'var(--success)' : (candle.ema9 < candle.ema21 ? 'var(--danger)' : 'var(--text-muted)');
+    emaEl.innerHTML = `<span style="color: ${color};">${candle.ema9.toFixed(6)} / ${candle.ema21.toFixed(6)} [${trendText}]</span>`;
+  }
+
+  const regimeEl = document.getElementById('live-regime');
+  if (regimeEl && candle.regime) {
+    regimeEl.textContent = candle.regime;
+    if (candle.regime.includes('Bull')) regimeEl.style.color = 'var(--success)';
+    else if (candle.regime.includes('Bear')) regimeEl.style.color = 'var(--danger)';
+    else regimeEl.style.color = 'var(--warning)';
   }
 }
 
@@ -311,9 +336,28 @@ export async function triggerExport(format) {
       return;
     }
 
-    const fileContent = appLogger.convertToJSONL(candles);
-    const mimeType = 'text/plain;charset=utf-8;';
-    const fileName = `quotex_candles_${Date.now()}.jsonl`;
+    let fileContent = '';
+    let mimeType = '';
+    let fileName = '';
+
+    if (format === 'json') {
+      fileContent = JSON.stringify(candles, null, 2);
+      mimeType = 'application/json;charset=utf-8;';
+      fileName = `quotex_candles_${Date.now()}.json`;
+    } else if (format === 'csv') {
+      const header = 'timestamp,datetime,symbol,open,high,low,close,volume\n';
+      const rows = candles.map(c => {
+        const dt = new Date(c.timestamp).toISOString();
+        return `${c.timestamp},${dt},${c.symbol},${c.open},${c.high},${c.low},${c.close},${c.volume || 0}`;
+      }).join('\n');
+      fileContent = header + rows;
+      mimeType = 'text/csv;charset=utf-8;';
+      fileName = `quotex_candles_${Date.now()}.csv`;
+    } else {
+      fileContent = appLogger.convertToJSONL(candles);
+      mimeType = 'text/plain;charset=utf-8;';
+      fileName = `quotex_candles_${Date.now()}.jsonl`;
+    }
 
     downloadFile(fileContent, fileName, mimeType);
   } catch (err) {

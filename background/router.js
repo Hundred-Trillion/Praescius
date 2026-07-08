@@ -11,9 +11,9 @@ import { telemetry } from '../core/telemetry.js';
 import { ReplayEngine } from '../core/replay.js';
 import { getLogs } from '../storage/db.js';
 import { getDB } from './lifecycle.js';
+import { tickAggregator } from '../core/TickAggregator.js';
 import {
   sessions,
-  candleCache,
   globalState
 } from './state.js';
 
@@ -42,6 +42,10 @@ export function getSession(tabId) {
 }
 
 const COMMAND_HANDLERS = {
+  'TOGGLE_KILL_SWITCH': async (message, sender, sendResponse, database) => {
+    globalState.killSwitch = !globalState.killSwitch;
+    sendResponse({ success: true, killSwitch: globalState.killSwitch });
+  },
   'CLOSE_SIDEBAR': async (message, sender, sendResponse, database) => {
     chrome.storage.local.set({ sidebarOpen: false }, () => {
       if (sender.tab && sender.tab.id) {
@@ -143,8 +147,7 @@ const COMMAND_HANDLERS = {
     const discTabId = sender.tab ? sender.tab.id : 'default';
     const sessionDisc = getSession(discTabId);
     sessionDisc.latestDiscovery = message.data;
-    const discKeys = Object.keys(candleCache).filter(k => k.startsWith(`${discTabId}_`));
-    if (discKeys.length > 0) sessionDisc.latestDiscovery.candlesFound = true;
+    if (tickAggregator.streams.size > 0) sessionDisc.latestDiscovery.candlesFound = true;
     sendResponse({ success: true });
   },
   'GET_STATUS': async (message, sender, sendResponse, database) => {
@@ -155,17 +158,11 @@ const COMMAND_HANDLERS = {
     const logs = await getLogs(database, 30, statusTabId);
     
     let latestCandle = null;
-    const sessionKeys = Object.keys(candleCache).filter(k => k.startsWith(`${statusTabId}_`));
-    if (sessionKeys.length > 0) {
-      let newest = null;
-      for (const key of sessionKeys) {
-        const list = candleCache[key];
-        if (list && list.length > 0) {
-          const c = list[list.length - 1];
-          if (!newest || c.timestamp > newest.timestamp) newest = c;
-        }
+    for (const stream of tickAggregator.streams.values()) {
+      const c = stream.currentCandle;
+      if (c && (!latestCandle || c.timestamp > latestCandle.timestamp)) {
+        latestCandle = c;
       }
-      latestCandle = newest;
     }
 
     const activeReplay = sessionStatus.replayEngine || { isPlaying: false, currentIndex: 0, candles: [] };
@@ -179,6 +176,7 @@ const COMMAND_HANDLERS = {
       activeProvider: sessionStatus.providerName || 'none',
       state: stateMachine.getCurrentState(),
       telemetry: telemetry.getSummary(),
+      killSwitch: globalState.killSwitch,
       replayState: {
         isPlaying: activeReplay.isPlaying,
         currentIndex: activeReplay.currentIndex,

@@ -188,11 +188,9 @@ export class QuotexProvider extends BaseProvider {
       return null;
     }
 
-    let timeframe = '1m';
+    let timeframe = 'tick';
     if (data.timeframe || data.tf || data.period) {
       timeframe = String(data.timeframe || data.tf || data.period);
-    } else if (context.includes('tick')) {
-      timeframe = 'tick';
     }
 
     if (isNaN(open) || isNaN(close) || isNaN(high) || isNaN(low) || isNaN(price)) {

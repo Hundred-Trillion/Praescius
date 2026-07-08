@@ -10,14 +10,25 @@ export function updateLogs(logs) {
   const terminal = document.getElementById('console-logs');
   if (!terminal || !logs || logs.length === 0) return;
 
-  terminal.innerHTML = '';
   logs.slice(0, 8).reverse().forEach(log => {
     const time = new Date(log.timestamp).toLocaleTimeString();
-    const div = document.createElement('div');
-    div.className = `log-line ${log.type}`;
-    div.textContent = `[${time}] ${log.message}`;
-    terminal.appendChild(div);
+    const logText = `[${time}] ${log.message}`;
+    
+    // Check if this specific log is already in the terminal
+    if (!terminal.innerHTML.includes(logText)) {
+      if (terminal.innerHTML.includes('System observer logs loaded.')) {
+        terminal.innerHTML = '';
+      }
+      const div = document.createElement('div');
+      div.className = `log-line ${log.type}`;
+      div.textContent = logText;
+      terminal.appendChild(div);
+    }
   });
+  
+  while (terminal.children.length > 50) {
+    terminal.removeChild(terminal.firstChild);
+  }
   terminal.scrollTop = terminal.scrollHeight;
 }
 
@@ -44,23 +55,34 @@ export function appendRawFrameLog(payload) {
 }
 
 export function appendParsedCandle(candle) {
-  const terminal = document.getElementById('parsed-candles-logs');
+  const terminal = document.getElementById('console-logs');
   if (!terminal || !candle) return;
 
-  parsedCandleBuffer.push({
-    time: new Date(candle.timestamp).toLocaleTimeString(),
-    text: `Symbol: ${candle.symbol} | Price: ${candle.price} | TF: ${candle.timeframe} | Source: ${candle.source}`
-  });
-
-  if (parsedCandleBuffer.length > BUFFER_LIMIT) {
-    parsedCandleBuffer.shift();
+  // Remove the default static text if it's there
+  if (terminal.innerHTML.includes('System observer logs loaded.')) {
+    terminal.innerHTML = '';
   }
 
-  terminal.innerHTML = '';
-  parsedCandleBuffer.slice().reverse().forEach(c => {
-    const div = document.createElement('div');
-    div.className = 'log-line info';
-    div.textContent = `[${c.time}] ${c.text}`;
-    terminal.appendChild(div);
-  });
+  const time = new Date(candle.timestamp).toLocaleTimeString();
+  const price = candle.price !== undefined ? candle.price : candle.close;
+  const logStr = `[${time}] ${candle.symbol} TICK: ${price.toFixed(6)} (Vol: ${candle.volume})`;
+  
+  // Prevent duplicate spam if market is completely frozen
+  if (terminal.lastElementChild && terminal.lastElementChild.textContent === logStr) {
+    return;
+  }
+  
+  const div = document.createElement('div');
+  div.className = 'log-line info';
+  div.style.color = '#00FF66';
+  div.textContent = logStr;
+  
+  terminal.appendChild(div);
+
+  // Keep terminal from overflowing
+  while (terminal.children.length > 20) {
+    terminal.removeChild(terminal.firstChild);
+  }
+  
+  terminal.scrollTop = terminal.scrollHeight;
 }

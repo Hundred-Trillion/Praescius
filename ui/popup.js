@@ -58,7 +58,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 4. Bind Action Click Listeners
   document.getElementById('btn-create-rule')?.addEventListener('click', handleCreateRule);
   document.getElementById('btn-export-jsonl')?.addEventListener('click', () => triggerExport('jsonl'));
+  document.getElementById('btn-export-json')?.addEventListener('click', () => triggerExport('json'));
+  document.getElementById('btn-export-csv')?.addEventListener('click', () => triggerExport('csv'));
   document.getElementById('btn-clear-db')?.addEventListener('click', handleClearDB);
+
+  document.getElementById('btn-kill-switch')?.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'TOGGLE_KILL_SWITCH' }, (res) => {
+      if (res && res.killSwitch !== undefined) {
+        const btn = document.getElementById('btn-kill-switch');
+        if (res.killSwitch) {
+          btn.style.background = 'var(--danger)';
+          btn.style.color = '#fff';
+        } else {
+          btn.style.background = 'rgba(255, 23, 68, 0.1)';
+          btn.style.color = 'var(--danger)';
+        }
+      }
+    });
+  });
 
   // 5. Bind Replay Engine Simulator Commands
   document.getElementById('btn-replay-load')?.addEventListener('click', handleReplayLoad);
@@ -74,18 +91,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderStrategies();
 
   // 7. Bind Live Stream Message Relays
+  let cachedTabId = null;
+  getTabId((id) => { cachedTabId = id; });
+
   chrome.runtime.onMessage.addListener((message) => {
-    getTabId((tabId) => {
-      if (message.tabId !== undefined && message.tabId !== tabId) {
-        return;
-      }
-      if (message.action === 'CANDLE_UPDATE') {
-        appendParsedCandle(message.candle);
-      }
-      if (message.action === 'RAW_WS_FRAME') {
-        appendRawFrameLog(message.payload);
-      }
-    });
+    if (message.tabId !== undefined && cachedTabId !== null && message.tabId !== cachedTabId) {
+      return;
+    }
+    if (message.action === 'CANDLE_UPDATE') {
+      appendParsedCandle(message.candle);
+    }
+    if (message.action === 'RAW_WS_FRAME') {
+      appendRawFrameLog(message.payload);
+    }
   });
 });
 
@@ -102,8 +120,25 @@ uiEventBus.addEventListener('status_update', (e) => {
   }
   updateMetrics(response.stats, response.latestCandle);
   updateLogs(response.logs);
+  
+  // Guarantee tick logging by piggybacking on the 1.5s status poll
+  if (response.latestCandle) {
+    appendParsedCandle(response.latestCandle);
+  }
+
   updateReplayPanel(response.replayState);
   updateTelemetry(response.state, response.telemetry);
+
+  const btn = document.getElementById('btn-kill-switch');
+  if (btn) {
+    if (response.killSwitch) {
+      btn.style.background = 'var(--danger)';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.background = 'rgba(255, 23, 68, 0.1)';
+      btn.style.color = 'var(--danger)';
+    }
+  }
 });
 
 uiEventBus.addEventListener('settings_update', (e) => {

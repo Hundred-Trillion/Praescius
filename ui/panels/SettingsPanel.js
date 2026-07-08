@@ -6,21 +6,40 @@ import { getUIStore } from './UIState.js';
 
 export function initInstantAIConfig() {
   const keyInput = document.getElementById('popup-api-key');
-  if (!keyInput) return;
+  const tgTokenInput = document.getElementById('popup-tg-token');
+  const tgChatIdInput = document.getElementById('popup-tg-chatid');
+  const tgMetric = document.getElementById('metric-telegram');
 
   chrome.storage.local.get(['settings'], (res) => {
     const settings = res.settings || {};
-    keyInput.value = settings.geminiKey || '';
+    if (keyInput) keyInput.value = settings.geminiKey || '';
+    if (tgTokenInput) tgTokenInput.value = settings.telegramToken || '';
+    if (tgChatIdInput) tgChatIdInput.value = settings.telegramChatId || '';
+    
+    if (tgMetric) {
+      tgMetric.textContent = (settings.telegramToken && settings.telegramChatId) ? 'Connected' : 'Disconnected';
+      tgMetric.style.color = (settings.telegramToken && settings.telegramChatId) ? 'var(--success)' : 'var(--text-muted)';
+    }
   });
 
-  keyInput.addEventListener('input', () => {
-    const key = keyInput.value.trim();
+  const saveSettings = () => {
     chrome.storage.local.get(['settings'], (res) => {
       const settings = res.settings || {};
-      settings.geminiKey = key;
+      if (keyInput) settings.geminiKey = keyInput.value.trim();
+      if (tgTokenInput) settings.telegramToken = tgTokenInput.value.trim();
+      if (tgChatIdInput) settings.telegramChatId = tgChatIdInput.value.trim();
       chrome.storage.local.set({ settings });
+
+      if (tgMetric) {
+        tgMetric.textContent = (settings.telegramToken && settings.telegramChatId) ? 'Connected' : 'Disconnected';
+        tgMetric.style.color = (settings.telegramToken && settings.telegramChatId) ? 'var(--success)' : 'var(--text-muted)';
+      }
     });
-  });
+  };
+
+  if (keyInput) keyInput.addEventListener('input', saveSettings);
+  if (tgTokenInput) tgTokenInput.addEventListener('input', saveSettings);
+  if (tgChatIdInput) tgChatIdInput.addEventListener('input', saveSettings);
 }
 
 export async function handleClearDB() {
