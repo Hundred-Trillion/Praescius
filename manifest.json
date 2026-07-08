@@ -14,7 +14,8 @@
     "https://*.tradingview.com/*",
     "https://*.pocketoption.com/*",
     "https://*.po.trade/*",
-    "https://*.bybit.com/*"
+    "https://*.bybit.com/*",
+    "https://nfs.faireconomy.media/*"
   ],
   "background": {
     "service_worker": "background.js",
