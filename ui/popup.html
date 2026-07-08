@@ -26,6 +26,9 @@
       <button id="btn-settings" class="icon-btn" title="Open Settings" style="font-size: 1.1rem; font-weight: bold; color: #000000;">
         ⚙
       </button>
+      <button id="btn-reload-ext" class="icon-btn" title="Reload Extension" style="font-size: 1.1rem; font-weight: bold; color: #000000; margin-right: 4px;">
+        🔄
+      </button>
       <button id="btn-close-sidebar" class="icon-btn" title="Close Sidebar" style="font-size: 1.1rem; font-weight: bold; color: #FFFFFF;">
         ✕
       </button>
@@ -127,6 +130,10 @@
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
           <span style="color: var(--text-muted);">Live Candle OHLC:</span>
           <span id="live-ohlc" style="font-family: monospace; font-weight: bold; font-size: 0.75rem;">O:0 H:0 L:0 C:0</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
+          <span style="color: var(--text-muted);">Last Candle OHLC:</span>
+          <span id="last-ohlc" style="font-family: monospace; font-weight: bold; font-size: 0.75rem;">Waiting for 1m close...</span>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
           <span style="color: var(--text-muted);">Minute Tick Volume:</span>

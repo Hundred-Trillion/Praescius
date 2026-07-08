@@ -10,7 +10,8 @@ import {
   updateMetrics,
   updateReplayPanel,
   updateTelemetry,
-  triggerExport
+  triggerExport,
+  exportRecentCandles
 } from './panels/ChartsPanel.js';
 import { handleClearDB } from './panels/SettingsPanel.js';
 import {
@@ -133,6 +134,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Bind Data Diagnostics Commands
   document.getElementById('btn-export-jsonl')?.addEventListener('click', () => triggerExport('jsonl'));
+  document.getElementById('btn-export-15m')?.addEventListener('click', () => exportRecentCandles(15));
+  document.getElementById('btn-export-30m')?.addEventListener('click', () => exportRecentCandles(30));
   document.getElementById('btn-clear-db')?.addEventListener('click', handleClearDB);
 
   // Bind Replay Engine Simulator Commands inside Options Page

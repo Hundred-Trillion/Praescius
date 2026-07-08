@@ -40,6 +40,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.runtime.sendMessage({ action: 'CLOSE_SIDEBAR' });
   });
 
+  document.getElementById('btn-reload-ext')?.addEventListener('click', () => {
+    chrome.runtime.reload();
+  });
+
   // 3. Bind Tab Switching Toggles
   const tabBtns = document.querySelectorAll('.tab-btn');
   tabBtns.forEach(btn => {
@@ -118,12 +122,12 @@ uiEventBus.addEventListener('status_update', (e) => {
   if (response.discovery || response.activeProvider) {
     updateDiscoveryReport(response.discovery, response.activeProvider);
   }
-  updateMetrics(response.stats, response.latestCandle);
+  updateMetrics(response.stats, response.latestCandle, response.lastCompletedCandle);
   updateLogs(response.logs);
   
-  // Guarantee tick logging by piggybacking on the 1.5s status poll
-  if (response.latestCandle) {
-    appendParsedCandle(response.latestCandle);
+  // Log the fully closed 1m candles instead of live tick spam
+  if (response.lastCompletedCandle) {
+    appendParsedCandle(response.lastCompletedCandle);
   }
 
   updateReplayPanel(response.replayState);

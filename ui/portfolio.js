@@ -18,6 +18,7 @@ import {
   detectCandlestickPatterns,
   detectChartPatterns
 } from '../indicators/StructureEngine.js';
+import { initAICoach, updateAICoach } from './panels/AICoachPanel.js';
 
 let db = null;
 let currentSymbol = 'BTC/USD';
@@ -68,6 +69,9 @@ async function initPortfolio() {
 
   // Initialize Custom Builders
   initBuilders();
+
+  // Initialize AI Coach Logic
+  initAICoach(db, activeTabId);
 
   // Initialize backups
   initBackups();
@@ -136,6 +140,12 @@ async function refreshCalculatedPanels() {
 
   // Update correlation grid
   updateCorrelationMatrix();
+
+  // Update AI Coach metrics
+  chrome.storage.local.get(['praescius_journal'], (res) => {
+    const logs = res.praescius_journal || [];
+    updateAICoach(candles, currentSymbol, logs);
+  });
 }
 
 /* ==========================================

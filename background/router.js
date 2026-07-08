@@ -90,6 +90,7 @@ const COMMAND_HANDLERS = {
       const session = getSession(wsTabId);
       session.providerName = wsProvider.name;
       session.state = 'LIVE_WS';
+      session.latestTitle = wsTitle;
     }
 
     eventBus.publish('market.tick.v1', {
@@ -158,10 +159,35 @@ const COMMAND_HANDLERS = {
     const logs = await getLogs(database, 30, statusTabId);
     
     let latestCandle = null;
-    for (const stream of tickAggregator.streams.values()) {
-      const c = stream.currentCandle;
-      if (c && (!latestCandle || c.timestamp > latestCandle.timestamp)) {
-        latestCandle = c;
+    let lastCompletedCandle = null;
+    
+    // Determine the active symbol from the tab title so we only show the visible chart
+    let activeSymbol = null;
+    if (sessionStatus.latestTitle) {
+      const symMatch = sessionStatus.latestTitle.match(/[A-Z]{3,}\/?[A-Z]{3,}/);
+      if (symMatch) activeSymbol = symMatch[0].replace('_', '/');
+    }
+    
+    let activeStream = activeSymbol ? tickAggregator.streams.get(activeSymbol) : null;
+    
+    if (activeStream) {
+      latestCandle = activeStream.currentCandle;
+      if (activeStream.last200.length > 0) {
+        lastCompletedCandle = activeStream.last200[activeStream.last200.length - 1];
+      }
+    } else {
+      for (const stream of tickAggregator.streams.values()) {
+        const c = stream.currentCandle;
+        if (c && (!latestCandle || c.timestamp > latestCandle.timestamp)) {
+          latestCandle = c;
+        }
+        
+        if (stream.last200.length > 0) {
+          const completed = stream.last200[stream.last200.length - 1];
+          if (!lastCompletedCandle || completed.timestamp > lastCompletedCandle.timestamp) {
+            lastCompletedCandle = completed;
+          }
+        }
       }
     }
 
@@ -173,6 +199,7 @@ const COMMAND_HANDLERS = {
       stats: stats,
       logs: logs,
       latestCandle: latestCandle,
+      lastCompletedCandle: lastCompletedCandle,
       activeProvider: sessionStatus.providerName || 'none',
       state: stateMachine.getCurrentState(),
       telemetry: telemetry.getSummary(),

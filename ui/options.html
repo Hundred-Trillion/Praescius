@@ -494,6 +494,16 @@
             </div>
             <button id="btn-export-jsonl" class="btn btn-secondary" style="font-size: 0.75rem; padding: 8px 12px;">Export JSONL</button>
           </div>
+          <div class="control-row" style="margin-bottom: 12px;">
+            <div class="control-label">
+              <span>Export Recent 1m OHLC (CSV)</span>
+              <small>Instantly download the most recent completed 1-minute candles for manual study.</small>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-export-15m" class="btn btn-secondary" style="font-size: 0.75rem; padding: 8px 12px;">15 Min</button>
+              <button id="btn-export-30m" class="btn btn-secondary" style="font-size: 0.75rem; padding: 8px 12px;">30 Min</button>
+            </div>
+          </div>
           <div class="control-row" style="margin-bottom: 0;">
             <div class="control-label">
               <span>Wipe Local Databases</span>
@@ -515,6 +525,7 @@
       <button class="portfolio-tab-btn" data-subtab="port-backtest" style="background: rgba(0,0,0,0.02); border: 2px solid #000; padding: 6px 12px; font-weight: bold; cursor: pointer;">🧪 Backtester &amp; Builders</button>
       <button class="portfolio-tab-btn" data-subtab="port-scanners" style="background: rgba(0,0,0,0.02); border: 2px solid #000; padding: 6px 12px; font-weight: bold; cursor: pointer;">🖥️ Scanners</button>
       <button class="portfolio-tab-btn" data-subtab="port-calculators" style="background: rgba(0,0,0,0.02); border: 2px solid #000; padding: 6px 12px; font-weight: bold; cursor: pointer;">🧮 Calculators</button>
+      <button class="portfolio-tab-btn" data-subtab="port-ai-coach" style="background: rgba(0,0,0,0.02); border: 2px solid #000; padding: 6px 12px; font-weight: bold; cursor: pointer; color: var(--primary);">🤖 AI Coach &amp; Discipline</button>
     </div>
 
     <!-- SUBTAB 1: WATCHLIST & MTF -->
@@ -964,6 +975,146 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- SUBTAB 6: AI COACH & DISCIPLINE -->
+  <div id="port-ai-coach" class="portfolio-subtab" style="display: none;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">
+      
+      <!-- 1. AI Trade Assistant -->
+      <div class="glass-panel" style="margin-bottom: 0;">
+        <div class="section-title" style="color: var(--primary);">🤖 AI Trade Assistant</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Analyzes setups across multiple dimensions.</div>
+        <div style="background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; padding: 12px; box-shadow: 2px 2px 0px #000000;">
+          <div style="font-weight: 900; font-size: 1rem; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 8px;">EUR/USD CALL</div>
+          <div style="color: var(--success); font-weight: 900; font-size: 1.2rem; margin-bottom: 12px;">Confidence: 87%</div>
+          <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; font-weight: bold;">
+            <div style="color: var(--success);">✔ Trend aligned</div>
+            <div style="color: var(--success);">✔ Volume increasing</div>
+            <div style="color: var(--success);">✔ Support bounce</div>
+            <div style="color: var(--danger);">✖ RSI slightly overbought</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. One-Click Trade Checklist -->
+      <div class="glass-panel" style="margin-bottom: 0;">
+        <div class="section-title">📋 One-Click Trade Checklist</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">No checklist → No trade button. Prevents emotional entries.</div>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; font-weight: bold;">
+          <label style="display: flex; gap: 8px; align-items: center;"><input type="checkbox"> Trend confirmed?</label>
+          <label style="display: flex; gap: 8px; align-items: center;"><input type="checkbox"> Support/Resistance mapped?</label>
+          <label style="display: flex; gap: 8px; align-items: center;"><input type="checkbox"> Checked high-impact News?</label>
+          <label style="display: flex; gap: 8px; align-items: center;"><input type="checkbox"> Risk mathematically acceptable?</label>
+          <label style="display: flex; gap: 8px; align-items: center;"><input type="checkbox"> Candle confirmation closed?</label>
+          <button class="btn" style="width: 100%; margin-top: 8px; opacity: 0.5;" disabled>Unlock Trade Execution</button>
+        </div>
+      </div>
+
+      <!-- 3. Emotion Detector -->
+      <div class="glass-panel" style="margin-bottom: 0; border: 2px solid var(--danger);">
+        <div class="section-title" style="color: var(--danger);">⚠️ Emotion Detector</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Tracks revenge trading and rule-breaking.</div>
+        <div style="background: rgba(255, 23, 68, 0.1); border: 2px dashed var(--danger); padding: 12px; text-align: center; font-weight: bold; font-size: 0.85rem;">
+          <div style="color: var(--danger); margin-bottom: 8px;">You've taken 8 trades in 20 minutes.</div>
+          <div style="color: #000; margin-bottom: 8px;">Your win rate after 5 consecutive trades drops to <span style="color: var(--danger); font-size: 1rem;">34%</span>.</div>
+          <div style="background: var(--danger); color: #FFF; padding: 6px; text-transform: uppercase;">Consider stopping.</div>
+        </div>
+      </div>
+
+      <!-- 4. Personal Stats Dashboard -->
+      <div class="glass-panel" style="margin-bottom: 0;">
+        <div class="section-title">📊 Personal Statistics</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Actionable insights instead of generic metrics.</div>
+        <ul style="font-size: 0.85rem; font-weight: bold; line-height: 1.6; padding-left: 20px; color: #000;">
+          <li>Mondays are historically your <span style="color: var(--danger);">worst</span> day.</li>
+          <li>You systematically lose after <span style="color: var(--warning);">10 PM</span>.</li>
+          <li>You win significantly more on <span style="color: var(--success);">pullbacks</span>.</li>
+          <li><span style="color: var(--primary);">EMA crossover</span> trades outperform RSI trades by 42%.</li>
+        </ul>
+      </div>
+
+      <!-- 5. AI Journal -->
+      <div class="glass-panel" style="margin-bottom: 0;">
+        <div class="section-title">📝 AI Auto-Journal</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Instant AI reflection after every closed trade.</div>
+        <div style="background: #FFFFFF; border: 2px solid #000000; padding: 12px; font-size: 0.85rem; box-shadow: 2px 2px 0px #000000;">
+          <strong style="color: var(--primary); display: block; margin-bottom: 4px;">What happened? (Trade ID: #4492)</strong>
+          <p style="margin: 0; line-height: 1.5; font-weight: bold; color: #000;">You entered before candle confirmation. The setup looked good, but this exact pattern of early entry has repeated <span style="color: var(--danger);">6 times</span> this week.</p>
+        </div>
+      </div>
+
+      <!-- 6. Multi-Chart Scanner -->
+      <div class="glass-panel" style="margin-bottom: 0;">
+        <div class="section-title">🌐 Multi-Chart Scanner</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Checks 100 assets on every timeframe simultaneously.</div>
+        <div style="background: #000; color: #00FF66; font-family: monospace; padding: 12px; font-size: 0.8rem; font-weight: bold; border-radius: 4px;">
+          <div>> Scanning 100 assets...</div>
+          <div>> Filtering noise...</div>
+          <br>
+          <div style="color: #FFF;">Found 1 high-probability setup:</div>
+          <div style="font-size: 1.1rem; color: var(--primary); margin-top: 4px;">EUR/USD (15m)</div>
+          <div style="color: #FFF;">> 92% setup match</div>
+          <div style="color: #FFF;">> Trend continuation</div>
+        </div>
+      </div>
+
+      <!-- 7. Session Assistant -->
+      <div class="glass-panel" style="margin-bottom: 0;">
+        <div class="section-title">🌍 Session Assistant</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Tracks global overlaps and your performance within them.</div>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; font-weight: bold;">
+          <div style="display: flex; justify-content: space-between; padding-bottom: 4px; border-bottom: 1px dashed #CCC;">
+            <span>🇬🇧 London Open</span> <span style="color: var(--success);">ACTIVE</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding-bottom: 4px; border-bottom: 1px dashed #CCC;">
+            <span>🇺🇸 New York Open</span> <span style="color: var(--text-muted);">In 3 hrs</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding-bottom: 4px; border-bottom: 1px dashed #CCC;">
+            <span>🇯🇵 Tokyo Overlap</span> <span style="color: var(--text-muted);">Closed</span>
+          </div>
+          <div style="margin-top: 8px; color: var(--primary); text-align: center;">"London is historically your best session. Focus up."</div>
+        </div>
+      </div>
+
+      <!-- 8. News Impact Filter -->
+      <div class="glass-panel" style="margin-bottom: 0;">
+        <div class="section-title">📰 News Impact Filter</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Direct directives, not just a calendar.</div>
+        <div style="background: var(--warning); padding: 12px; border: 2px solid #000; font-weight: bold; color: #000; text-align: center; box-shadow: 2px 2px 0px #000000;">
+          <div style="font-size: 1.1rem; text-transform: uppercase; margin-bottom: 4px;">Avoid trading USD!</div>
+          <div>High-impact CPI release in 25 minutes.</div>
+          <div style="font-size: 0.75rem; margin-top: 8px; opacity: 0.8;">Markets will be highly volatile.</div>
+        </div>
+      </div>
+
+      <!-- 9. Replay Your Mistakes -->
+      <div class="glass-panel" style="margin-bottom: 0;">
+        <div class="section-title">⏪ Replay Your Mistakes</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Educational visual game replay for past losses.</div>
+        <div style="border: 2px solid #000; background: #FFF; padding: 12px; font-weight: bold; font-size: 0.85rem; box-shadow: 2px 2px 0px #000000;">
+          <div style="display: flex; align-items: center; justify-content: center; height: 60px; background: #F4F4F6; border: 1px dashed #000; margin-bottom: 12px; color: var(--text-muted);">[ Interactive Chart Replay ]</div>
+          <div style="color: var(--danger);">🔴 "You entered here." (Impulsive)</div>
+          <div style="color: var(--success); margin-top: 8px;">🟢 "Better entry was here." (Confirmed Support)</div>
+          <button class="btn btn-secondary" style="width: 100%; margin-top: 12px; font-size: 0.75rem;">Load Last Loss in Replay</button>
+        </div>
+      </div>
+
+      <!-- 10. Trading Coach -->
+      <div class="glass-panel" style="margin-bottom: 0; border: 2px solid var(--primary);">
+        <div class="section-title" style="color: var(--primary);">🎓 Live Trading Coach</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Like having a mentor watching over your shoulder.</div>
+        <div style="background: rgba(33, 150, 243, 0.1); padding: 12px; border: 2px dashed var(--primary); font-weight: bold; color: #000;">
+          <div style="font-size: 1rem; color: var(--primary); margin-bottom: 8px;">Coach says:</div>
+          <ul style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
+            <li>Wait. Don't enter yet.</li>
+            <li>The candle hasn't closed.</li>
+            <li>You're fighting the macro trend.</li>
+          </ul>
+        </div>
+      </div>
+
     </div>
   </div>
 

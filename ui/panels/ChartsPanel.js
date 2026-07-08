@@ -36,7 +36,7 @@ export function updateDiscoveryReport(report, activeProvider) {
   }
 }
 
-export function updateLiveMonitor(candle) {
+export function updateLiveMonitor(candle, lastCompletedCandle) {
   if (!candle) return;
   const symEl = document.getElementById('disc-asset');
   const priceEl = document.getElementById('live-price');
@@ -74,6 +74,11 @@ export function updateLiveMonitor(candle) {
     ohlcEl.textContent = `O:${candle.open.toFixed(6)} H:${candle.high.toFixed(6)} L:${candle.low.toFixed(6)} C:${candle.close.toFixed(6)}`;
   }
   
+  const lastOhlcEl = document.getElementById('last-ohlc');
+  if (lastOhlcEl && lastCompletedCandle && lastCompletedCandle.open !== undefined) {
+    lastOhlcEl.textContent = `O:${lastCompletedCandle.open.toFixed(6)} H:${lastCompletedCandle.high.toFixed(6)} L:${lastCompletedCandle.low.toFixed(6)} C:${lastCompletedCandle.close.toFixed(6)}`;
+  }
+  
   const tickVolEl = document.getElementById('live-tick-vol');
   if (tickVolEl && candle.volume !== undefined) {
     tickVolEl.textContent = `${candle.volume} ticks`;
@@ -95,7 +100,7 @@ export function updateLiveMonitor(candle) {
   }
 }
 
-export function updateMetrics(stats, latestCandle) {
+export function updateMetrics(stats, latestCandle, lastCompletedCandle) {
   const candlesEl = document.getElementById('metric-candles');
   const dbWritesEl = document.getElementById('perf-db-writes');
 
@@ -104,7 +109,7 @@ export function updateMetrics(stats, latestCandle) {
     if (dbWritesEl) dbWritesEl.textContent = `${stats.totalLogged || 0} writes`;
   }
   if (latestCandle) {
-    updateLiveMonitor(latestCandle);
+    updateLiveMonitor(latestCandle, lastCompletedCandle);
   }
 }
 
@@ -362,6 +367,39 @@ export async function triggerExport(format) {
     downloadFile(fileContent, fileName, mimeType);
   } catch (err) {
     alert(`Export failed: ${err.message}`);
+  }
+}
+
+export async function exportRecentCandles(minutes) {
+  try {
+    const { db } = await getUIStore();
+    let candles = await getCandles(db, null, null, 100000);
+    
+    // Filter strictly for 1m completed candles
+    candles = candles.filter(c => c.timeframe === '1m');
+    
+    if (candles.length === 0) {
+      alert('No 1-minute candles found in the database yet. Wait for a minute to close.');
+      return;
+    }
+    
+    // Sort chronologically and extract the trailing N elements
+    candles.sort((a, b) => a.timestamp - b.timestamp);
+    const recentCandles = candles.slice(-minutes);
+    
+    const header = 'timestamp,datetime,symbol,open,high,low,close,volume\n';
+    const rows = recentCandles.map(c => {
+      const dt = new Date(c.timestamp).toISOString();
+      return `${c.timestamp},${dt},${c.symbol},${c.open},${c.high},${c.low},${c.close},${c.volume || 0}`;
+    }).join('\n');
+    
+    const fileContent = header + rows;
+    const mimeType = 'text/csv;charset=utf-8;';
+    const fileName = `recent_${minutes}m_ohlc_${Date.now()}.csv`;
+    
+    downloadFile(fileContent, fileName, mimeType);
+  } catch (err) {
+    alert(`Failed to export recent candles: ${err.message}`);
   }
 }
 

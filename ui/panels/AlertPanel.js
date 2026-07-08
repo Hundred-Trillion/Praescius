@@ -64,8 +64,8 @@ export function appendParsedCandle(candle) {
   }
 
   const time = new Date(candle.timestamp).toLocaleTimeString();
-  const price = candle.price !== undefined ? candle.price : candle.close;
-  const logStr = `[${time}] ${candle.symbol} TICK: ${price.toFixed(6)} (Vol: ${candle.volume})`;
+  const ohlc = `O:${candle.open.toFixed(5)} H:${candle.high.toFixed(5)} L:${candle.low.toFixed(5)} C:${candle.close.toFixed(5)}`;
+  const logStr = `[${time}] ${candle.symbol} 1m CLOSE | ${ohlc} (Vol: ${candle.volume})`;
   
   // Prevent duplicate spam if market is completely frozen
   if (terminal.lastElementChild && terminal.lastElementChild.textContent === logStr) {
