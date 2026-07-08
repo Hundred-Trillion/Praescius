@@ -123,5 +123,4 @@ export class ReplayEngine {
   }
 }
 
-export const replayEngine = new ReplayEngine();
-export default replayEngine;
+

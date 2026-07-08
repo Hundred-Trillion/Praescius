@@ -10,11 +10,7 @@ import { PocketOptionProvider } from './pocketoption/index.js';
 import { BybitProvider } from './bybit/index.js';
 
 // Static plugin imports to comply with Service Worker CSP/import restrictions
-import { DummyProvider } from '../plugins/dummy/provider.js';
-
-const STATIC_PLUGINS = {
-  'dummy': DummyProvider
-};
+const STATIC_PLUGINS = {};
 
 class ProviderManager {
   constructor() {
@@ -78,7 +74,7 @@ class ProviderManager {
   async loadPlugins() {
     return new Promise((resolve) => {
       chrome.storage.local.get(['pluginRegistry'], async (res) => {
-        const list = res.pluginRegistry || ['dummy'];
+        const list = res.pluginRegistry || [];
         for (const key of list) {
           try {
             const manifestUrl = chrome.runtime.getURL(`plugins/${key}/manifest.json`);

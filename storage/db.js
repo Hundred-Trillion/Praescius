@@ -2,7 +2,7 @@
  * Storage module handling IndexedDB initialization and candle transactions.
  */
 
-const DB_NAME = 'AetherisObserverDB';
+const DB_NAME = 'PraesciusDB';
 const DB_VERSION = 2;
 const STORE_CANDLES = 'candles';
 const STORE_LOGS = 'logs';

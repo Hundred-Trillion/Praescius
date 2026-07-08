@@ -4,7 +4,7 @@
  */
 
 import BaseProvider from '../baseProvider.js';
-import { normalizeSymbol } from '../../utils/helpers.js';
+import { normalizeSymbol, extractJSON } from '../../utils/helpers.js';
 
 export class QuotexProvider extends BaseProvider {
   constructor() {
@@ -22,39 +22,6 @@ export class QuotexProvider extends BaseProvider {
            cleanTitle.includes('quotex');
   }
 
-  async discover() {
-    // Audit Canvas / Context items for Quotex
-    console.log('[Quotex Provider] Running environment discovery...');
-    return {
-      chartEngine: 'PixiJS',
-      transport: 'WebSocket (Socket.IO)',
-      dataSource: 'QXBroker Live Feed',
-      confidence: 1.0
-    };
-  }
-
-  connect() {
-    console.log('[Quotex Provider] Interceptor connected.');
-    return true;
-  }
-
-  async getCandles() {
-    // Dynamic series retrieval mock
-    return [];
-  }
-
-  async getTicks() {
-    return [];
-  }
-
-  getSymbol() {
-    return this.currentSymbol;
-  }
-
-  disconnect() {
-    console.log('[Quotex Provider] Interceptor disconnected.');
-    return true;
-  }
 
   parse(payload, direction) {
     if (direction !== 'incoming') return null;
@@ -81,29 +48,7 @@ export class QuotexProvider extends BaseProvider {
 
     if (!messageBody || messageBody === 'probe') return null;
 
-    // Helper function for extracting JSON from wrapped binary/headers
-    const extractJSON = (str) => {
-      const firstBrace = str.indexOf('{');
-      const firstBracket = str.indexOf('[');
-      let start = -1;
-      if (firstBrace !== -1 && firstBracket !== -1) {
-        start = Math.min(firstBrace, firstBracket);
-      } else {
-        start = firstBrace !== -1 ? firstBrace : firstBracket;
-      }
-      if (start === -1) return null;
-      
-      let candidate = str.substring(start);
-      while (candidate.length > 0) {
-        try {
-          const parsed = JSON.parse(candidate);
-          return parsed;
-        } catch (e) {
-          candidate = candidate.slice(0, -1);
-        }
-      }
-      return null;
-    };
+    if (!messageBody || messageBody === 'probe') return null;
 
     try {
       let parsed = null;
@@ -278,7 +223,6 @@ export class QuotexProvider extends BaseProvider {
   }
 
   fallbackRegex(message) {
-    if (!message.includes('BTC')) return null;
     try {
       const priceMatch = message.match(/"price"\s*:\s*([0-9.]+)/i);
       const closeMatch = message.match(/"close"\s*:\s*([0-9.]+)/i);

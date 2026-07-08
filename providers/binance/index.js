@@ -19,37 +19,6 @@ export class BinanceProvider extends BaseProvider {
     return hostname.includes('binance.com') || cleanTitle.includes('binance');
   }
 
-  async discover() {
-    console.log('[Binance Provider] Running environment discovery...');
-    return {
-      chartEngine: 'WebGL Canvas (TradingView Lightweight Charts)',
-      transport: 'WebSocket Secure',
-      dataSource: 'Binance Live WebSocket Stream',
-      confidence: 1.0
-    };
-  }
-
-  connect() {
-    console.log('[Binance Provider] Interceptor connected.');
-    return true;
-  }
-
-  async getCandles() {
-    return [];
-  }
-
-  async getTicks() {
-    return [];
-  }
-
-  getSymbol() {
-    return this.currentSymbol;
-  }
-
-  disconnect() {
-    console.log('[Binance Provider] Interceptor disconnected.');
-    return true;
-  }
 
   parse(payload, direction) {
     if (!payload || typeof payload !== 'string') return null;

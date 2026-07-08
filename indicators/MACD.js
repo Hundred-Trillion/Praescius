@@ -33,15 +33,22 @@ export class MACD extends BaseIndicator {
     }
 
     // 2. Calculate Signal Line (EMA of MACD Line)
-    // We construct a mock candle list out of MACD Line to feed EMA calculate
-    const macdCandles = macdLine.map((val, idx) => ({
-      close: val === null ? prices[idx] : val // fallback during immature periods
-    }));
+    // Extract only valid MACD values to prevent EMA drift from raw price fallbacks
+    const validMacd = macdLine.filter(val => val !== null).map(val => ({ close: val }));
+    const validSignal = this.emaCalculator.calculate(validMacd, { period: signalPeriod });
+    
+    // Re-pad the signal line to match the original prices array length
+    const signalLine = new Array(prices.length).fill(null);
+    let signalIdx = 0;
+    for (let i = 0; i < prices.length; i++) {
+      if (macdLine[i] !== null) {
+        signalLine[i] = validSignal[signalIdx] !== undefined ? validSignal[signalIdx] : null;
+        signalIdx++;
+      }
+    }
 
-    const signalLine = this.emaCalculator.calculate(macdCandles, { period: signalPeriod });
-
-    // Set immature periods to null
-    const startPeriod = Math.max(slowPeriod, fastPeriod) + signalPeriod;
+    // Set immature periods to null (strictly enforcing start periods)
+    const startPeriod = Math.max(slowPeriod, fastPeriod) + signalPeriod - 1;
     for (let i = 0; i < Math.min(startPeriod, prices.length); i++) {
       macdLine[i] = null;
       signalLine[i] = null;

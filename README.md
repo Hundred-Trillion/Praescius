@@ -1,6 +1,7 @@
-# Aetheris Market Observer (V2)
+# Praescius (V2)
+### by Nanduri Labs
 
-Aetheris Market Observer is an extensible, high-performance, and **strictly observational** Chrome Extension (Manifest V3) designed to observe, parse, and analyze real-time market data directly from financial web charting applications and notify users when user-defined technical conditions are met.
+Praescius is an extensible, high-performance, and **strictly observational** Chrome Extension (Manifest V3) designed to observe, parse, and analyze real-time market data directly from financial web charting applications and notify users when user-defined technical conditions are met.
 
 > [!IMPORTANT]
 > **Observation-Only Rule**: This extension is read-only. It does **not** make trades, place binary options orders, click buy/sell execution elements, bypass platform checks, or interact with financial transaction services.
@@ -10,7 +11,7 @@ Aetheris Market Observer is an extensible, high-performance, and **strictly obse
 ## What It Does & How It Works
 
 ### 1. What It Does
-Aetheris tracks live asset streams (such as `BTC/USD` or `EUR/USD`) on active broker tabs. It logs candlestick data, evaluates technical indicators (RSI, SMA, EMA, MACD, ATR, VWAP), checks for specific candlestick patterns (Doji, Hammer, Engulfing), and generates system notifications when rules match. Users create rules in plain natural language or using the structured **Rules DSL**, which the extension compiles and validates locally.
+Praescius tracks live asset streams (such as `BTC/USD` or `EUR/USD`) on active broker tabs. It logs candlestick data, evaluates technical indicators (RSI, SMA, EMA, MACD, ATR, VWAP), checks for specific candlestick patterns (Doji, Hammer, Engulfing), and generates system notifications when rules match. Users create rules in plain natural language or using the structured **Rules DSL**, which the extension compiles and validates locally.
 
 ### 2. Core Architecture
 * **State Machine (`core/stateMachine.js`)**: Tracks execution states as a single source of truth (`OFFLINE`, `CONNECTING`, `LIVE_WS`, `LIVE_DOM`, `REPLAY`, `ERROR`).
@@ -23,9 +24,9 @@ Aetheris tracks live asset streams (such as `BTC/USD` or `EUR/USD`) on active br
   * `system.state.changed.v1` — Internal state updates
   * `system.logs.v1` — Core diagnostics logger
 * **Dynamic WebSocket Interception**: Captures socket traffic via an injected main-world script (`inject.js`) and forwards it to the content script using HTML5 `postMessage`.
-* **Dynamic Plugin SDK**: External platforms can be registered as self-contained directories under `plugins/{key}/` containing a `manifest.json`, `provider.js`, and `selectors.json`, loaded dynamically via native ESM imports.
+* **Static Plugin SDK**: External platforms can be registered as self-contained directories under `plugins/{key}/` containing a `manifest.json`, `provider.js`, and `selectors.json`, loaded statically via the `providerManager`.
 * **Historical Validation & Adaptive Confidence**: Compares real-time WebSocket ticks against DOM fallbacks, adjusting the confidence weighting dynamically based on price agreement ($\Delta = |P_{\text{ws}} - P_{\text{dom}}|$).
-* **Multi-Dimensional ML Confidence System**: Generates a unified confidence report based on Prediction, Data Source, Rule structure, and Cache-based Historical success rates.
+* **Multi-Dimensional Confidence System**: Generates a unified confidence report based on Prediction, Data Source, Rule structure, and Cache-based Historical success rates.
 * **Performance Telemetry Diagnostics**: Logs execution metrics including WS/DOM uptime, frame parsing speeds, AI summarizer response times, selector errors, and replay execution latency.
 * **Deterministic Simulation Player**: An offline Replay Engine (`core/replay.js`) parses historical JSON Lines (`logs/candles.jsonl`) to simulate streaming market data for dry-run verification.
 
@@ -41,7 +42,7 @@ WHEN
 THEN
   Notify
 ```
-* **Supported Indicators**: `Price`, `RSI`, `SMA`, `EMA`, `MACD`, `ATR`, `VWAP`
+* **Supported Indicators**: 47+ indicators including `Price`, `RSI`, `SMA`, `EMA`, `MACD`, `BollingerBands`, `Ichimoku`, `ATR`, `VWAP`, etc.
 * **Supported Operators**: `>`, `<`, `>=`, `<=`, `==`, `crosses above`, `crosses below`
 * **Supported Patterns**: `Three Bullish Candles`, `Three Bearish Candles`, `Bullish Engulfing`, `Bearish Engulfing`, `Doji`, `Hammer`
 
@@ -59,7 +60,7 @@ THEN
 
 ## Obtaining a Free Gemini API Key
 
-Aetheris uses the Gemini API to translate natural language rules into structured JSON. You can set up your own API key for free:
+Praescius uses the Gemini API to translate natural language rules into structured JSON. You can set up your own API key for free:
 
 ### 1. How to Fetch an API Key
 1. Navigate to [Google AI Studio](https://aistudio.google.com/).
@@ -70,7 +71,7 @@ Aetheris uses the Gemini API to translate natural language rules into structured
 6. Open the extension popup, click the **Gear Icon** (Settings) in the top-right, choose **Google Gemini API**, paste your key, and click **Save Configuration**.
 
 ### 2. Supported Models & Free Tier Details
-* **Recommended Model**: `gemini-1.5-flash`
+* **Recommended Model**: `gemini-2.5-flash`
 * **Pricing**: Completely free.
 * **Rate Limits**: The free tier allows up to **15 Requests Per Minute (RPM)**, **1,500 Requests Per Day (RPD)**, and **1 million Tokens Per Minute (TPM)**, which is more than sufficient for rule translations.
 

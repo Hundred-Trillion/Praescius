@@ -4,7 +4,17 @@
  */
 
 const SUPPORTED_OPERATORS = ['>', '<', '>=', '<=', '==', 'crossover_above', 'crossover_below'];
-const SUPPORTED_INDICATORS = ['Price', 'RSI', 'SMA', 'EMA', 'MACD', 'ATR', 'VWAP', 'Candle'];
+const SUPPORTED_INDICATORS = [
+  'Price', 'Candle',
+  // Indicators
+  'RSI', 'SMA', 'EMA', 'MACD', 'ATR', 'VWAP',
+  'WMA', 'VWMA', 'HMA', 'TEMA', 'DEMA', 'KAMA', 'ALMA', 'GMMA',
+  'StochRSI', 'CCI', 'ROC', 'Momentum', 'WilliamsR', 'AwesomeOscillator', 'TSI', 'PPO', 'TRIX', 'UltimateOscillator',
+  'SuperTrend', 'ADX', 'Aroon', 'ParabolicSAR', 'Ichimoku', 'LinearRegressionChannel',
+  'AnchoredVWAP', 'OBV', 'MFI', 'CMF', 'VolumeProfile', 'ForceIndex', 'KlingerOscillator', 'AccumulationDistribution', 'EaseOfMovement',
+  'BollingerBands', 'DonchianChannel', 'KeltnerChannel', 'StandardDeviation', 'HistoricalVolatility', 'ChandelierExit',
+  'Fibonacci'
+];
 const SUPPORTED_PATTERNS = [
   'Three Bullish Candles',
   'Three Bearish Candles',
@@ -173,15 +183,15 @@ export function parseDSL(dslString) {
     if (!inWhen) continue;
 
     if (upperLine === 'AND') {
-      rule.operator = 'AND';
+      if (!rule.operatorSet) { rule.operator = 'AND'; rule.operatorSet = true; }
       continue;
     }
     if (upperLine === 'OR') {
-      rule.operator = 'OR';
+      if (!rule.operatorSet) { rule.operator = 'OR'; rule.operatorSet = true; }
       continue;
     }
     if (upperLine === 'NOT') {
-      rule.operator = 'NOT';
+      if (!rule.operatorSet) { rule.operator = 'NOT'; rule.operatorSet = true; }
       continue;
     }
 
@@ -189,14 +199,14 @@ export function parseDSL(dslString) {
     const match = line.match(/^([A-Za-z]+)(\d+)?\s*(>=|<=|>|<|==|crosses\s+above|crosses\s+below|crossover\s+above|crossover\s+below)\s*([0-9.]+)/i);
     if (match) {
       let ind = match[1];
-      ind = ind.toUpperCase();
-      if (ind === 'PRICE') ind = 'Price';
-      else if (ind === 'RSI') ind = 'RSI';
-      else if (ind === 'SMA') ind = 'SMA';
-      else if (ind === 'EMA') ind = 'EMA';
-      else if (ind === 'MACD') ind = 'MACD';
-      else if (ind === 'ATR') ind = 'ATR';
-      else if (ind === 'VWAP') ind = 'VWAP';
+      const matchedIndicator = SUPPORTED_INDICATORS.find(
+        name => name.toLowerCase() === ind.toLowerCase()
+      );
+      if (matchedIndicator) {
+        ind = matchedIndicator;
+      } else {
+        throw new Error(`DSL Syntax Error: Unsupported indicator: "${ind}"`);
+      }
 
       const period = match[2] ? parseInt(match[2], 10) : (ind === 'RSI' ? 14 : undefined);
       let op = match[3].toLowerCase();

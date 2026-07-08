@@ -19,37 +19,6 @@ export class BybitProvider extends BaseProvider {
     return hostname.includes('bybit.com') || cleanTitle.includes('bybit');
   }
 
-  async discover() {
-    console.log('[Bybit Provider] Running environment discovery...');
-    return {
-      chartEngine: 'Lightweight Charts Canvas',
-      transport: 'WebSocket (V5 Private/Public)',
-      dataSource: 'Bybit Live Stream',
-      confidence: 1.0
-    };
-  }
-
-  connect() {
-    console.log('[Bybit Provider] Connecting V5 listeners...');
-    return true;
-  }
-
-  async getCandles() {
-    return [];
-  }
-
-  async getTicks() {
-    return [];
-  }
-
-  getSymbol() {
-    return this.currentSymbol;
-  }
-
-  disconnect() {
-    console.log('[Bybit Provider] Disconnected.');
-    return true;
-  }
 
   parse(payload, direction) {
     if (direction !== 'incoming') return null;
@@ -66,7 +35,12 @@ export class BybitProvider extends BaseProvider {
         const rawSymbol = topicParts[topicParts.length - 1];
         const symbol = this.formatSymbol(rawSymbol);
         this.currentSymbol = symbol;
-        const timeframe = topicParts[1] + 'm';
+        let tfRaw = topicParts[1];
+        let timeframe = tfRaw + 'm';
+        if (tfRaw === '60') timeframe = '1h';
+        if (tfRaw === 'D') timeframe = '1d';
+        if (tfRaw === 'W') timeframe = '1w';
+        if (tfRaw === 'M') timeframe = '1M';
         
         return {
           schema: 1,

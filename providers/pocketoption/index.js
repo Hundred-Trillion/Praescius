@@ -4,7 +4,7 @@
  */
 
 import BaseProvider from '../baseProvider.js';
-import { normalizeSymbol } from '../../utils/helpers.js';
+import { normalizeSymbol, extractJSON } from '../../utils/helpers.js';
 
 export class PocketOptionProvider extends BaseProvider {
   constructor() {
@@ -22,37 +22,6 @@ export class PocketOptionProvider extends BaseProvider {
            cleanTitle.includes('pocket option');
   }
 
-  async discover() {
-    console.log('[PocketOption Provider] Running environment discovery...');
-    return {
-      chartEngine: 'WebGL Engine (Lightweight)',
-      transport: 'WebSocket (Binary Frames)',
-      dataSource: 'PO Streaming Feed',
-      confidence: 1.0
-    };
-  }
-
-  connect() {
-    console.log('[PocketOption Provider] Hooking WebSocket connection...');
-    return true;
-  }
-
-  async getCandles() {
-    return [];
-  }
-
-  async getTicks() {
-    return [];
-  }
-
-  getSymbol() {
-    return this.currentSymbol;
-  }
-
-  disconnect() {
-    console.log('[PocketOption Provider] Disconnected.');
-    return true;
-  }
 
   parse(payload, direction) {
     if (direction !== 'incoming') return null;
@@ -78,28 +47,7 @@ export class PocketOptionProvider extends BaseProvider {
 
     if (!messageBody || messageBody === 'probe') return null;
 
-    const extractJSON = (str) => {
-      const firstBrace = str.indexOf('{');
-      const firstBracket = str.indexOf('[');
-      let start = -1;
-      if (firstBrace !== -1 && firstBracket !== -1) {
-        start = Math.min(firstBrace, firstBracket);
-      } else {
-        start = firstBrace !== -1 ? firstBrace : firstBracket;
-      }
-      if (start === -1) return null;
-      
-      let candidate = str.substring(start);
-      while (candidate.length > 0) {
-        try {
-          const parsed = JSON.parse(candidate);
-          return parsed;
-        } catch (e) {
-          candidate = candidate.slice(0, -1);
-        }
-      }
-      return null;
-    };
+    if (!messageBody || messageBody === 'probe') return null;
 
     try {
       let parsed = null;

@@ -34,9 +34,10 @@ export default class MeanReversionStrategy extends BaseStrategy {
     const activeTicks = ticks.filter(t => t.timestamp >= current.timestamp);
     if (activeTicks.length >= 8) {
       const len = activeTicks.length;
-      // split into two halves
-      const firstHalf = activeTicks.slice(0, Math.floor(len / 2));
-      const secondHalf = activeTicks.slice(Math.floor(len / 2));
+      const duration = Date.now() - current.timestamp;
+      const boundaryTime = current.timestamp + (duration * 0.50);
+      const firstHalf = activeTicks.filter(t => t.timestamp < boundaryTime);
+      const secondHalf = activeTicks.filter(t => t.timestamp >= boundaryTime);
       
       const firstVol = firstHalf.length;
       const secondVol = secondHalf.length;

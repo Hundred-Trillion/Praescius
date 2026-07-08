@@ -13,7 +13,7 @@ You must output ONLY valid JSON matching this schema:
   "operator": "AND" | "OR" | "NOT",
   "conditions": [
     {
-      "indicator": "Price" | "RSI" | "SMA" | "EMA",
+      "indicator": "Price" | "RSI" | "SMA" | "EMA" | "MACD" | "ATR" | "VWAP" | "BollingerBands" | "Ichimoku" | string (any other technical indicator name),
       "period": number (optional, e.g. 14 for RSI/SMA),
       "operator": ">" | "<" | ">=" | "<=" | "==" | "crossover_above" | "crossover_below",
       "value": number
@@ -35,6 +35,7 @@ Supported Indicators:
 - RSI: checks Relative Strength Index. Can accept a "period" (default 14).
 - SMA: checks Simple Moving Average. Requires a "period".
 - EMA: checks Exponential Moving Average. Requires a "period".
+- Plus 40+ other indicators like MACD, ATR, VWAP, BollingerBands, etc. Support any standard indicator name.
 - Candle: checks specific properties or geometries of the current candlestick.
   - "open", "close", "high", "low" (absolute price values of the candle)
   - "body" (absolute size of the candle body: |close - open|)

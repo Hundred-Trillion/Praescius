@@ -22,6 +22,9 @@ export class AppLogger {
    */
   async logCandle(candle) {
     try {
+      const res = await new Promise(resolve => chrome.storage.local.get(['settings'], resolve));
+      if (res.settings && res.settings.loggingEnabled === false) return;
+
       const versioned = {
         schema: candle.schema || 1, // Schema Versioning
         provider: candle.provider || 'unknown', // Provider attribution

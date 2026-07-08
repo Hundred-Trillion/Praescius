@@ -9,7 +9,7 @@ export default class LiquiditySweepStrategy extends BaseStrategy {
   }
 
   evaluate(candles, ticks) {
-    if (!candles || candles.length < 25) return false;
+    if (!candles || candles.length < 25) return super.evaluate(candles, ticks);
 
     const current = candles[candles.length - 1];
     const prevCandle = candles[candles.length - 2];
@@ -18,7 +18,7 @@ export default class LiquiditySweepStrategy extends BaseStrategy {
     const prev20 = candles.slice(-21, -1);
 
     const range = current.high - current.low;
-    if (range === 0) return false;
+    if (range === 0) return super.evaluate(candles, ticks);
 
     // ----------------------------------------------------
     // 1. Current Candle Checks

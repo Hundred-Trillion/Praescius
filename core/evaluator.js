@@ -3,22 +3,99 @@
  * Resolves values via indicator plugins.
  */
 
-import RSI from '../indicators/RSI.js';
-import EMA from '../indicators/EMA.js';
-import SMA from '../indicators/SMA.js';
-import MACD from '../indicators/MACD.js';
-import ATR from '../indicators/ATR.js';
-import VWAP from '../indicators/VWAP.js';
+// ── Existing ──────────────────────────────────────────────────────────────────
+import RSI    from '../indicators/RSI.js';
+import EMA    from '../indicators/EMA.js';
+import SMA    from '../indicators/SMA.js';
+import MACD   from '../indicators/MACD.js';
+import ATR    from '../indicators/ATR.js';
+import VWAP   from '../indicators/VWAP.js';
 
-// Instantiate all plugin indicators
-const INDICATOR_PLUGINS = {
-  RSI: new RSI(),
-  EMA: new EMA(),
-  SMA: new SMA(),
-  MACD: new MACD(),
-  ATR: new ATR(),
-  VWAP: new VWAP()
+// ── Moving Averages ───────────────────────────────────────────────────────────
+import WMA    from '../indicators/WMA.js';
+import VWMA   from '../indicators/VWMA.js';
+import HMA    from '../indicators/HMA.js';
+import TEMA   from '../indicators/TEMA.js';
+import DEMA   from '../indicators/DEMA.js';
+import KAMA   from '../indicators/KAMA.js';
+import ALMA   from '../indicators/ALMA.js';
+import GMMA   from '../indicators/GMMA.js';
+
+// ── Momentum Oscillators ──────────────────────────────────────────────────────
+import StochRSI          from '../indicators/StochRSI.js';
+import CCI               from '../indicators/CCI.js';
+import ROC               from '../indicators/ROC.js';
+import Momentum          from '../indicators/Momentum.js';
+import WilliamsR         from '../indicators/WilliamsR.js';
+import AwesomeOscillator from '../indicators/AwesomeOscillator.js';
+import TSI               from '../indicators/TSI.js';
+import PPO               from '../indicators/PPO.js';
+import TRIX              from '../indicators/TRIX.js';
+import UltimateOscillator from '../indicators/UltimateOscillator.js';
+
+// ── Trend ─────────────────────────────────────────────────────────────────────
+import SuperTrend              from '../indicators/SuperTrend.js';
+import ADX                     from '../indicators/ADX.js';
+import Aroon                   from '../indicators/Aroon.js';
+import ParabolicSAR            from '../indicators/ParabolicSAR.js';
+import Ichimoku                from '../indicators/Ichimoku.js';
+import LinearRegressionChannel from '../indicators/LinearRegressionChannel.js';
+
+// ── Volume ────────────────────────────────────────────────────────────────────
+import AnchoredVWAP          from '../indicators/AnchoredVWAP.js';
+import OBV                   from '../indicators/OBV.js';
+import MFI                   from '../indicators/MFI.js';
+import CMF                   from '../indicators/CMF.js';
+import VolumeProfile         from '../indicators/VolumeProfile.js';
+import ForceIndex            from '../indicators/ForceIndex.js';
+import KlingerOscillator     from '../indicators/KlingerOscillator.js';
+import AccumulationDistribution from '../indicators/AccumulationDistribution.js';
+import EaseOfMovement        from '../indicators/EaseOfMovement.js';
+
+// ── Volatility ────────────────────────────────────────────────────────────────
+import BollingerBands       from '../indicators/BollingerBands.js';
+import DonchianChannel      from '../indicators/DonchianChannel.js';
+import KeltnerChannel       from '../indicators/KeltnerChannel.js';
+import StandardDeviation    from '../indicators/StandardDeviation.js';
+import HistoricalVolatility from '../indicators/HistoricalVolatility.js';
+import ChandelierExit       from '../indicators/ChandelierExit.js';
+
+// ── Fibonacci ─────────────────────────────────────────────────────────────────
+import Fibonacci from '../indicators/Fibonacci.js';
+
+// ── Instantiate all plugin indicators ────────────────────────────────────────
+export const INDICATOR_PLUGINS = {
+  // Existing
+  RSI: new RSI(), EMA: new EMA(), SMA: new SMA(),
+  MACD: new MACD(), ATR: new ATR(), VWAP: new VWAP(),
+  // Moving Averages
+  WMA: new WMA(), VWMA: new VWMA(), HMA: new HMA(),
+  TEMA: new TEMA(), DEMA: new DEMA(), KAMA: new KAMA(),
+  ALMA: new ALMA(), GMMA: new GMMA(),
+  // Momentum
+  StochRSI: new StochRSI(), CCI: new CCI(), ROC: new ROC(),
+  Momentum: new Momentum(), WilliamsR: new WilliamsR(),
+  AwesomeOscillator: new AwesomeOscillator(), TSI: new TSI(),
+  PPO: new PPO(), TRIX: new TRIX(), UltimateOscillator: new UltimateOscillator(),
+  // Trend
+  SuperTrend: new SuperTrend(), ADX: new ADX(), Aroon: new Aroon(),
+  ParabolicSAR: new ParabolicSAR(), Ichimoku: new Ichimoku(),
+  LinearRegressionChannel: new LinearRegressionChannel(),
+  // Volume
+  AnchoredVWAP: new AnchoredVWAP(), OBV: new OBV(), MFI: new MFI(),
+  CMF: new CMF(), VolumeProfile: new VolumeProfile(),
+  ForceIndex: new ForceIndex(), KlingerOscillator: new KlingerOscillator(),
+  AccumulationDistribution: new AccumulationDistribution(),
+  EaseOfMovement: new EaseOfMovement(),
+  // Volatility
+  BollingerBands: new BollingerBands(), DonchianChannel: new DonchianChannel(),
+  KeltnerChannel: new KeltnerChannel(), StandardDeviation: new StandardDeviation(),
+  HistoricalVolatility: new HistoricalVolatility(), ChandelierExit: new ChandelierExit(),
+  // Fibonacci
+  Fibonacci: new Fibonacci()
 };
+
+const indicatorCache = new Map();
 
 /**
  * Runs rule validation over historical candle streams.
@@ -130,7 +207,23 @@ function evaluateCondition(candles, cond) {
     const plugin = INDICATOR_PLUGINS[cond.indicator];
     if (!plugin) return false;
 
-    const values = plugin.calculate(candles, cond);
+    // Bounded indicator cache to prevent redundant recalculation
+    if (indicatorCache.size > 200) {
+      const oldestKey = indicatorCache.keys().next().value;
+      indicatorCache.delete(oldestKey);
+    }
+
+    const lastCandle = candles[lastIdx];
+    const cacheKey = `${lastCandle.symbol || 'default'}_${candles.length}_${lastCandle.timestamp || 0}::${cond.indicator}_${cond.period || ''}_${cond.multiplier || ''}_${cond.shortPeriod || ''}_${cond.longPeriod || ''}_${cond.signalPeriod || ''}`;
+
+    let values;
+    if (indicatorCache.has(cacheKey)) {
+      values = indicatorCache.get(cacheKey);
+    } else {
+      values = plugin.calculate(candles, cond);
+      indicatorCache.set(cacheKey, values);
+    }
+    
     const currentVal = values[values.length - 1];
 
     if (currentVal === null || currentVal === undefined) return false;
@@ -178,7 +271,7 @@ function compare(val1, op, val2, series) {
     case '<': return val1 < val2;
     case '>=': return val1 >= val2;
     case '<=': return val1 <= val2;
-    case '==': return val1 === val2;
+    case '==': return Math.abs(val1 - val2) < 0.0001;
     default: return false;
   }
 }

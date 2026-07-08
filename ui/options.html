@@ -2,183 +2,1106 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Options Configuration - Aetheris Observer</title>
+  <title>Options Configuration - Praescius</title>
   <link rel="stylesheet" href="design.css">
   <style>
     body {
-      min-width: 500px;
-      max-width: 600px;
+      max-width: 1200px;
+      width: 92%;
       margin: 40px auto;
-      background-color: #05070c;
+      background-color: var(--bg-base);
     }
-    .options-wrapper {
-      padding: 24px;
+
+    .options-tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      border-bottom: 3px solid #000000;
+      padding-bottom: 12px;
     }
+
+    .options-tab-btn {
+      background: #FFFFFF;
+      border: 2px solid #000000;
+      color: #000000;
+      padding: 10px 18px;
+      font-size: 0.9rem;
+      font-weight: 900;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 3px 3px 0px #000000;
+      transition: all var(--transition-fast);
+      text-transform: uppercase;
+    }
+
+    .options-tab-btn.active {
+      background: var(--primary);
+      box-shadow: 1px 1px 0px #000000;
+      transform: translate(2px, 2px);
+    }
+
+    .options-tab-btn:hover:not(.active) {
+      background: #F4F4F6;
+    }
+
+    .options-tab-content {
+      display: none;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 992px) {
+      .options-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .section-title {
-      font-size: 1rem;
-      border-bottom: 1px solid var(--border-color);
+      font-size: 1.1rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      border-bottom: 2px solid #000000;
       padding-bottom: 8px;
-      margin-bottom: 16px;
-      margin-top: 24px;
+      margin-bottom: 18px;
+      margin-top: 10px;
+      color: #000000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
+
     .control-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 16px;
+      background: #FFFFFF;
+      border: 2px solid #000000;
+      border-radius: 4px;
+      padding: 12px 16px;
+      box-shadow: 2px 2px 0px #000000;
     }
+
     .control-label {
       display: flex;
       flex-direction: column;
-      gap: 2px;
-      max-width: 70%;
+      gap: 4px;
+      max-width: 75%;
     }
+
     .control-label span {
       font-size: 0.85rem;
-      font-weight: 600;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #000000;
     }
+
     .control-label small {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
+      line-height: 1.3;
     }
+
     .api-key-group {
       display: none;
-      margin-bottom: 16px;
+      margin-top: 14px;
     }
+
     .api-key-group.active {
       display: block;
+    }
+
+    .platform-card {
+      background: #FFFFFF;
+      border: 2px solid #000000;
+      border-radius: 4px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: 2px 2px 0px #000000;
+    }
+
+    .platform-title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .status-badge {
+      color: #000000;
+      font-size: 0.65rem;
+      font-weight: 900;
+      background: var(--success);
+      padding: 2px 6px;
+      border: 2px solid #000000;
+      border-radius: 4px;
+      box-shadow: 1px 1px 0px #000000;
+    }
+
+    .guide-card {
+      background: #FFFFFF;
+      border: 3px solid #000000;
+      border-radius: 4px;
+      padding: 20px;
+      box-shadow: 4px 4px 0px #000000;
+      margin-bottom: 20px;
+    }
+
+    .guide-step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: 2px solid #000000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 0.95rem;
+      box-shadow: 2px 2px 0px #000000;
+      flex-shrink: 0;
+    }
+
+    .step-desc {
+      font-size: 0.85rem;
+      color: #000000;
+      line-height: 1.5;
+    }
+
+    .step-desc strong {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 900;
+      margin-bottom: 4px;
+      text-transform: uppercase;
     }
   </style>
 </head>
 <body>
-  <div class="glass-panel options-wrapper">
-    <h1 style="font-size: 1.4rem; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-      Aetheris Observer Configuration
-    </h1>
+  <!-- Header -->
+  <header style="margin-bottom: 30px; border-radius: 4px; box-shadow: 4px 4px 0px #000000; border: 2px solid #000000; display: flex; justify-content: space-between; align-items: center;">
+    <div class="brand-wrapper" style="display: flex; align-items: center; gap: 12px;">
+      <img src="../icons/icon48.png" alt="Logo" class="logo-glow" style="width: 36px; height: 36px;">
+      <div style="display: flex; flex-direction: column;">
+        <h1 style="font-size: 1.4rem; font-weight: 900; color: #000000; margin: 0; line-height: 1; text-transform: uppercase;">Praescius</h1>
+        <span style="font-size: 0.7rem; font-weight: 800; color: #000000; opacity: 0.8; margin-top: 2px;">BY NANDURI LABS</span>
+      </div>
+    </div>
+    <div style="font-size: 0.8rem; font-weight: 800; border: 2px solid #000000; padding: 6px 12px; background: #FFFFFF; box-shadow: 2px 2px 0px #000000;">
+      CONFIGURATION CONTROL CENTRE
+    </div>
+  </header>
 
-    <!-- AI Engine Selection -->
-    <div class="section-title" style="margin-top: 0;">AI Translation Services</div>
-    
-    <div class="input-container" style="margin-bottom: 16px;">
-      <label for="ai-provider">Target Translation Model</label>
-      <select id="ai-provider" class="text-input" style="width: 100%;">
-        <option value="local">Local offline parser (Free - No keys required)</option>
-        <option value="gemini">Google Gemini API</option>
-        <option value="openai">OpenAI GPT-4o-mini</option>
-      </select>
+  <!-- Options Navigation Tabs -->
+  <div class="options-tabs">
+    <button class="options-tab-btn active" data-tab="opt-core">⚙️ Core &amp; AI</button>
+    <button class="options-tab-btn" data-tab="opt-developer">🛠️ Developer Panel</button>
+    <button class="options-tab-btn" data-tab="opt-portfolio">💼 Portfolio Hub</button>
+    <button class="options-tab-btn" data-tab="opt-guide">📖 Navigation Guide</button>
+    <button class="options-tab-btn" data-tab="opt-profile">👤 User Profile</button>
+  </div>
+
+  <!-- Tab 1: Core Settings -->
+  <div id="opt-core" class="options-tab-content" style="display: block;">
+    <div class="options-grid">
+      <!-- Left Column: AI Config & Supported Platforms -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- AI Panel -->
+        <div class="glass-panel" style="margin-bottom: 0;">
+          <div class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            AI Translation Services
+          </div>
+          
+          <div class="input-container" style="margin-bottom: 16px;">
+            <label for="ai-provider">Target Translation Model</label>
+            <select id="ai-provider" class="text-input" style="width: 100%;">
+              <option value="local">Local offline parser (Free - No keys required)</option>
+              <option value="gemini">Google Gemini API (Highly Recommended)</option>
+              <option value="openai">OpenAI GPT-4o-mini</option>
+            </select>
+          </div>
+
+          <!-- Gemini Key -->
+          <div id="gemini-key-group" class="api-key-group">
+            <div class="input-container">
+              <label for="api-key-gemini">Google Gemini API Key</label>
+              <input type="password" id="api-key-gemini" class="text-input" placeholder="AIzaSy..." style="width: 100%;">
+              
+              <div style="background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; padding: 16px; margin-top: 14px; font-size: 0.75rem; color: #000000; line-height: 1.5; box-shadow: 2px 2px 0px #000000;">
+                <strong style="color: #000000; font-weight: 900; display: flex; align-items: center; gap: 6px; margin-bottom: 10px; text-transform: uppercase;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                  How to obtain a free Gemini API Key:
+                </strong>
+                <ol style="margin-left: 16px; display: flex; flex-direction: column; gap: 6px;">
+                  <li>Navigate to <a href="https://aistudio.google.com/" target="_blank" style="color: #000000; text-decoration: underline; font-weight: 800; background: var(--primary); padding: 1px 4px; border: 1px solid #000000;">Google AI Studio</a>.</li>
+                  <li>Sign in with your Google account.</li>
+                  <li>Click the blue <strong>"Get API Key"</strong> button in the top left sidebar.</li>
+                  <li>Click <strong>"Create API Key"</strong>, select/create a project, and copy your key.</li>
+                  <li>Paste the key in the input box above and click <strong>"Save Configuration"</strong>.</li>
+                </ol>
+                <span style="display: block; margin-top: 12px; border-top: 2px solid #000000; padding-top: 8px; font-style: italic; font-size: 0.7rem; color: var(--text-muted);">
+                  Note: Uses <strong>gemini-1.5-flash</strong> on the Free Tier, which is completely free and ideal for rule translations.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- OpenAI Key -->
+          <div id="openai-key-group" class="api-key-group">
+            <div class="input-container">
+              <label for="api-key-openai">OpenAI API Key</label>
+              <input type="password" id="api-key-openai" class="text-input" placeholder="sk-proj-..." style="width: 100%;">
+              <span style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; display: block; font-style: italic;">
+                Requires standard API balance credits. Key is stored locally in your browser.
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Platforms Panel -->
+        <div class="glass-panel" style="margin-bottom: 0;">
+          <div class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+            Supported Platforms &amp; Providers
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="platform-card">
+              <div class="platform-title">
+                Quotex <span class="status-badge">ACTIVE</span>
+              </div>
+              <small style="font-size: 0.7rem; color: var(--text-muted);">Fully integrated Socket.IO payload parser.</small>
+            </div>
+            <div class="platform-card">
+              <div class="platform-title">
+                Binance <span class="status-badge">ACTIVE</span>
+              </div>
+              <small style="font-size: 0.7rem; color: var(--text-muted);">Public WebSocket market stream parser.</small>
+            </div>
+            <div class="platform-card">
+              <div class="platform-title">
+                Bybit <span class="status-badge">ACTIVE</span>
+              </div>
+              <small style="font-size: 0.7rem; color: var(--text-muted);">Integrated V5 trade and kline parser.</small>
+            </div>
+            <div class="platform-card">
+              <div class="platform-title">
+                TradingView <span class="status-badge">ACTIVE</span>
+              </div>
+              <small style="font-size: 0.7rem; color: var(--text-muted);">Timescale and qsd watchlist quote parser.</small>
+            </div>
+            <div class="platform-card" style="grid-column: span 2;">
+              <div class="platform-title">
+                Pocket Option <span class="status-badge">ACTIVE</span>
+              </div>
+              <small style="font-size: 0.7rem; color: var(--text-muted);">Integrated JSON quote array stream parser.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Settings, Diagnostics & Save -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- System Settings Panel -->
+        <div class="glass-panel" style="margin-bottom: 0;">
+          <div class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            System Settings
+          </div>
+
+          <!-- Notifications -->
+          <div class="control-row">
+            <div class="control-label">
+              <span>Desktop Notifications</span>
+              <small>Show native popups when compiled technical rules trigger.</small>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-notifications" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <!-- Logging -->
+          <div class="control-row">
+            <div class="control-label">
+              <span>IndexedDB Candle Logging</span>
+              <small>Persist parsed candles locally for historical records and backtest simulators.</small>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="toggle-logging" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Diagnostics Panel -->
+        <div class="glass-panel" style="margin-bottom: 0;">
+          <div class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            Diagnostics
+          </div>
+          <div class="control-row">
+            <div class="control-label">
+              <span>Alert Engine Verification</span>
+              <small>Triggers a test browser notification to verify permissions and system integration.</small>
+            </div>
+            <button id="btn-test-notification" class="btn btn-secondary" style="font-size: 0.75rem; padding: 8px 14px;">
+              Trigger Test
+            </button>
+          </div>
+        </div>
+
+        <!-- Save Actions -->
+        <div class="glass-panel" style="margin-bottom: 0; background: var(--primary); display: flex; flex-direction: column; gap: 12px; align-items: stretch; justify-content: center;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span id="save-status" style="font-size: 0.95rem; font-weight: 900; text-transform: uppercase; color: #000000; display: none;">Settings saved!</span>
+            <div style="flex: 1;"></div>
+            <button id="btn-save-settings" class="btn" style="background: #FFFFFF !important; color: #000000 !important; width: 100%; border: 3px solid #000000; box-shadow: 4px 4px 0px #000000;">
+              Save Configuration
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: Developer Panel -->
+  <div id="opt-developer" class="options-tab-content">
+    <div class="options-grid">
+      <!-- Left Column: Simulation Controls & Parsed Logs -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Replay simulator panel -->
+        <div class="glass-panel" style="margin-bottom: 0;">
+          <div class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+            Replay Session Simulator
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px;">
+            Test compiled indicators, structures, and notifications by injecting historical datasets.
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+            <button id="btn-replay-load" class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 8px;">Load candles.jsonl</button>
+            <button id="btn-replay-play" class="btn" style="flex: 1; background: var(--success); color: #FFFFFF; font-size: 0.75rem; padding: 8px;">Play</button>
+            <button id="btn-replay-pause" class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 8px;">Pause</button>
+            <button id="btn-replay-step" class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 8px;">Step</button>
+            <button id="btn-replay-stop" class="btn btn-secondary" style="flex: 1; font-size: 0.75rem; padding: 8px;">Stop</button>
+          </div>
+
+          <!-- Progress bar -->
+          <div style="background: rgba(0,0,0,0.1); border: 2px solid #000000; border-radius: 4px; padding: 10px; box-shadow: 2px 2px 0px #000000;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 6px;">
+              <span>Simulation Progress</span>
+              <span id="replay-info" style="color: var(--primary);">Inactive</span>
+            </div>
+            <div style="width: 100%; height: 12px; background: #FFFFFF; border: 2px solid #000000; border-radius: 3px; overflow: hidden; position: relative;">
+              <div id="replay-progress" style="width: 0%; height: 100%; background: var(--primary); transition: width var(--transition-fast);"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Parsed candle logs -->
+        <div class="glass-panel" style="margin-bottom: 0;">
+          <div class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Parser Real-Time Logs
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div>
+              <div style="font-size: 0.75rem; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; color: #000000;">Parsed Candlesticks</div>
+              <div id="parsed-candles-logs" class="item-list" style="max-height: 250px; overflow-y: auto; font-family: monospace; font-size: 0.7rem; background: #FFFFFF; border: 2px solid #000000; padding: 10px; box-shadow: 2px 2px 0px #000000;">
+                <div class="center-text">No candles captured yet.</div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; color: #000000;">Raw WebSocket Frames</div>
+              <div id="raw-ws-logs" class="item-list" style="max-height: 250px; overflow-y: auto; font-family: monospace; font-size: 0.7rem; background: #FFFFFF; border: 2px solid #000000; padding: 10px; box-shadow: 2px 2px 0px #000000;">
+                <div class="center-text">No raw packets recorded.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: System Telemetry -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Telemetry Details -->
+        <div class="glass-panel" style="margin-bottom: 0;">
+          <div class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+            System Telemetry Details
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;">
+            <div class="control-row" style="margin-bottom: 0; box-shadow: 1px 1px 0px #000000;">
+              <div class="control-label">
+                <span>Active Connection</span>
+                <small>Checks if the content parser is receiving socket packets.</small>
+              </div>
+              <span id="telemetry-connected" style="font-weight: 900; color: var(--danger);">DISCONNECTED</span>
+            </div>
+            
+            <div class="control-row" style="margin-bottom: 0; box-shadow: 1px 1px 0px #000000;">
+              <div class="control-label">
+                <span>System Latency</span>
+                <small>Average round-trip calculation delay per tick.</small>
+              </div>
+              <span id="telemetry-latency" style="font-weight: 900; font-family: monospace;">0 ms</span>
+            </div>
+
+            <div class="control-row" style="margin-bottom: 0; box-shadow: 1px 1px 0px #000000;">
+              <div class="control-label">
+                <span>Cache Hit / Miss Ratio</span>
+                <small>Evaluator math cache performance.</small>
+              </div>
+              <span id="telemetry-cache-hits" style="font-weight: 900; font-family: monospace;">0 / 0</span>
+            </div>
+
+            <div class="control-row" style="margin-bottom: 0; box-shadow: 1px 1px 0px #000000;">
+              <div class="control-label">
+                <span>Evaluator Tick Rate</span>
+                <small>WebSocket frames evaluated per second.</small>
+              </div>
+              <span id="telemetry-rate" style="font-weight: 900; font-family: monospace;">0 fps</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Export Diagnostics -->
+        <div class="glass-panel" style="margin-bottom: 0;">
+          <div class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Data Diagnostics
+          </div>
+          <div class="control-row" style="margin-bottom: 12px;">
+            <div class="control-label">
+              <span>Export Raw Ticks JSONL</span>
+              <small>Download current session log in standardized JSON lines for machine learning.</small>
+            </div>
+            <button id="btn-export-jsonl" class="btn btn-secondary" style="font-size: 0.75rem; padding: 8px 12px;">Export JSONL</button>
+          </div>
+          <div class="control-row" style="margin-bottom: 0;">
+            <div class="control-label">
+              <span>Wipe Local Databases</span>
+              <small>Removes all cached ticks, rules, settings, and journal positions.</small>
+            </div>
+            <button id="btn-clear-db" class="btn btn-secondary" style="background: var(--danger) !important; color: #FFFFFF; font-size: 0.75rem; padding: 8px 12px;">Wipe DB</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 3: Portfolio & Analytics Hub -->
+  <div id="opt-portfolio" class="options-tab-content">
+    <!-- Sub tabs navigation for Portfolio -->
+    <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #000000; padding-bottom: 8px;">
+      <button class="portfolio-tab-btn active" data-subtab="port-watchlist" style="background: rgba(0,0,0,0.02); border: 2px solid #000; padding: 6px 12px; font-weight: bold; cursor: pointer;">🔍 Watchlist &amp; MTF</button>
+      <button class="portfolio-tab-btn" data-subtab="port-trading" style="background: rgba(0,0,0,0.02); border: 2px solid #000; padding: 6px 12px; font-weight: bold; cursor: pointer;">💼 Paper Terminal &amp; Wallet</button>
+      <button class="portfolio-tab-btn" data-subtab="port-backtest" style="background: rgba(0,0,0,0.02); border: 2px solid #000; padding: 6px 12px; font-weight: bold; cursor: pointer;">🧪 Backtester &amp; Builders</button>
+      <button class="portfolio-tab-btn" data-subtab="port-scanners" style="background: rgba(0,0,0,0.02); border: 2px solid #000; padding: 6px 12px; font-weight: bold; cursor: pointer;">🖥️ Scanners</button>
+      <button class="portfolio-tab-btn" data-subtab="port-calculators" style="background: rgba(0,0,0,0.02); border: 2px solid #000; padding: 6px 12px; font-weight: bold; cursor: pointer;">🧮 Calculators</button>
     </div>
 
-    <!-- Gemini Key -->
-    <div id="gemini-key-group" class="api-key-group">
-      <div class="input-container">
-        <label for="api-key-gemini">Google Gemini API Key</label>
-        <input type="password" id="api-key-gemini" class="text-input" placeholder="AIzaSy...">
-        <div style="background: rgba(0, 242, 254, 0.03); border: 1px solid rgba(0, 242, 254, 0.1); border-radius: 8px; padding: 12px; margin-top: 8px; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
-          <strong style="color: var(--primary); display: block; margin-bottom: 6px;">How to obtain a free Gemini API Key:</strong>
-          1. Navigate to <a href="https://aistudio.google.com/" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: 600;">Google AI Studio</a>.<br>
-          2. Sign in with your Google account.<br>
-          3. Click the blue <strong>"Get API Key"</strong> button in the top left sidebar.<br>
-          4. Click <strong>"Create API Key"</strong>, select/create a project, and copy your key.<br>
-          5. Paste the key in the input box above and click <strong>"Save Configuration"</strong>.<br>
-          <span style="display: block; margin-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 6px; font-style: italic;">
-            Note: The extension uses the <strong>gemini-1.5-flash</strong> model on the Free Tier (includes 15 RPM / 1,500 RPD limits), which is completely free of charge and ideal for natural language rule translations.
-          </span>
+    <!-- SUBTAB 1: WATCHLIST & MTF -->
+    <div id="port-watchlist" class="portfolio-subtab" style="display: block;">
+      <div class="options-grid">
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <!-- Watchlist panel -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Watchlist Assets Manager</div>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+              <input type="text" id="watchlist-input" class="text-input" placeholder="e.g. BTC/USD" style="flex: 1;">
+              <button id="btn-watchlist-add" class="btn btn-secondary">Add Asset</button>
+            </div>
+            <div id="watchlist-container" style="display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; box-shadow: 2px 2px 0px #000000;">
+              <!-- Chips will load dynamically -->
+            </div>
+          </div>
+
+          <!-- Multi-Timeframe Dashboard -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Multi-Timeframe Structure Analysis</div>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
+                <thead>
+                  <tr style="border-bottom: 2px solid #000000; font-weight: bold;">
+                    <th style="padding: 8px;">Timeframe</th>
+                    <th style="padding: 8px;">EMA Trend</th>
+                    <th style="padding: 8px;">RSI (14)</th>
+                    <th style="padding: 8px;">MACD Hist</th>
+                    <th style="padding: 8px;">Consensus Signal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom: 1px solid #000000;">
+                    <td style="padding: 8px; font-weight: bold;">1-Minute (1m)</td>
+                    <td id="mtf-1m-trend" style="padding: 8px;">Checking...</td>
+                    <td id="mtf-1m-rsi" style="padding: 8px;">-</td>
+                    <td id="mtf-1m-macd" style="padding: 8px;">-</td>
+                    <td id="mtf-1m-signal" style="padding: 8px; font-weight: bold;">-</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #000000;">
+                    <td style="padding: 8px; font-weight: bold;">5-Minute (5m)</td>
+                    <td id="mtf-5m-trend" style="padding: 8px;">Checking...</td>
+                    <td id="mtf-5m-rsi" style="padding: 8px;">-</td>
+                    <td id="mtf-5m-macd" style="padding: 8px;">-</td>
+                    <td id="mtf-5m-signal" style="padding: 8px; font-weight: bold;">-</td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid #000000;">
+                    <td style="padding: 8px; font-weight: bold;">15-Minute (15m)</td>
+                    <td id="mtf-15m-trend" style="padding: 8px;">Checking...</td>
+                    <td id="mtf-15m-rsi" style="padding: 8px;">-</td>
+                    <td id="mtf-15m-macd" style="padding: 8px;">-</td>
+                    <td id="mtf-15m-signal" style="padding: 8px; font-weight: bold;">-</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px; font-weight: bold;">1-Hour (1h)</td>
+                    <td id="mtf-1h-trend" style="padding: 8px;">Checking...</td>
+                    <td id="mtf-1h-rsi" style="padding: 8px;">-</td>
+                    <td id="mtf-1h-macd" style="padding: 8px;">-</td>
+                    <td id="mtf-1h-signal" style="padding: 8px; font-weight: bold;">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <!-- Volume profile -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Volume Profile distribution</div>
+            <div id="volume-profile-visual" style="display: flex; flex-direction: column; gap: 4px; padding: 12px; background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; box-shadow: 2px 2px 0px #000000;">
+              <div style="font-size: 0.8rem; text-align: center; color: var(--text-muted);">No volume ticks.</div>
+            </div>
+          </div>
+
+          <!-- Pearson correlation matrix -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Cross-Asset Pearson Correlation (50 Ticks)</div>
+            <div style="display: grid; grid-template-columns: 1fr 1.2fr 1.2fr 1.2fr 1.2fr; gap: 6px; align-items: center; margin-bottom: 8px;">
+              <div style="font-size: 0.7rem; font-weight: bold; text-align: right; color: var(--text-muted); text-transform: uppercase;">Asset</div>
+              <div style="font-size: 0.75rem; font-weight: 900; text-align: center; color: #000;">BTC/USD</div>
+              <div style="font-size: 0.75rem; font-weight: 900; text-align: center; color: #000;">ETH/USD</div>
+              <div style="font-size: 0.75rem; font-weight: 900; text-align: center; color: #000;">EUR/USD</div>
+              <div style="font-size: 0.75rem; font-weight: 900; text-align: center; color: #000;">GBP/USD</div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;" id="correlation-matrix-grid">
+              <!-- Grid cells filled by portfolio.js -->
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- OpenAI Key -->
-    <div id="openai-key-group" class="api-key-group">
-      <div class="input-container">
-        <label for="api-key-openai">OpenAI API Key</label>
-        <input type="password" id="api-key-openai" class="text-input" placeholder="sk-proj-...">
-        <span style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px;">
-          Requires standard API balance credits. Key is stored locally.
-        </span>
+    <!-- SUBTAB 2: PAPER TRADING TERMINAL & WALLET -->
+    <div id="port-trading" class="portfolio-subtab" style="display: none;">
+      <div class="options-grid">
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <!-- Simulated balance & order entry -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Simulated Trading Account</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; padding: 12px 16px; margin-bottom: 16px; box-shadow: 2px 2px 0px #000000;">
+              <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Paper Balance</span>
+                <div id="paper-balance" style="font-size: 1.5rem; font-weight: 900; color: var(--success); margin-top: 4px;">$10,000.00 USD</div>
+              </div>
+              <button id="btn-paper-reset" class="btn btn-secondary" style="background: var(--danger) !important; color: #FFFFFF;">Reset Account</button>
+            </div>
+
+            <!-- Place order fields -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                  <label for="paper-order-type">Order Execution Type</label>
+                  <select id="paper-order-type" class="text-input" style="width: 100%;">
+                    <option value="market">Market Order</option>
+                    <option value="limit">Limit Order</option>
+                  </select>
+                </div>
+                <div style="flex: 1;">
+                  <label for="paper-qty">Transaction Qty</label>
+                  <input type="number" id="paper-qty" class="text-input" value="0.1" step="0.01" style="width: 100%;">
+                </div>
+              </div>
+
+              <div id="limit-price-container" style="display: none;">
+                <label for="paper-limit-price">Limit Execution Price</label>
+                <input type="number" id="paper-limit-price" class="text-input" style="width: 100%;">
+              </div>
+
+              <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                  <label for="paper-sl">Target Stop Loss ($)</label>
+                  <input type="number" id="paper-sl" class="text-input" placeholder="No SL" style="width: 100%;">
+                </div>
+                <div style="flex: 1;">
+                  <label for="paper-tp">Target Take Profit ($)</label>
+                  <input type="number" id="paper-tp" class="text-input" placeholder="No TP" style="width: 100%;">
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 12px; margin-top: 6px;">
+                <button id="btn-paper-buy" class="btn" style="flex: 1; background: var(--success) !important; color: #FFFFFF !important;">BUY / LONG</button>
+                <button id="btn-paper-sell" class="btn" style="flex: 1; background: var(--danger) !important; color: #FFFFFF !important;">SELL / SHORT</button>
+              </div>
+              <div id="paper-trade-status" style="text-align: center; color: var(--warning); display: none; font-weight: 800; font-size: 0.8rem; margin-top: 8px;"></div>
+            </div>
+          </div>
+
+          <!-- Active positions -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Active Positions</div>
+            <div id="positions-list" style="display: flex; flex-direction: column; gap: 8px;">
+              <div class="center-text">No active positions.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <!-- Wallet setup -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Web3 Wallet integration</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px;">
+              Connect your MetaMask wallet or Web3 browser identity to sign cryptographic verification payloads.
+            </div>
+            <div id="wallet-connect-section" style="display: flex; flex-direction: column; gap: 10px;">
+              <button id="btn-wallet-connect" class="btn" style="width: 100%;">Connect Web3 Wallet</button>
+              <div id="wallet-details" style="display: none; background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; padding: 12px 16px; font-size: 0.8rem; box-shadow: 2px 2px 0px #000000;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                  <span style="color: var(--text-muted);">Address:</span>
+                  <span id="wallet-addr" style="font-family: monospace; color: var(--primary); font-weight: bold;">0x71C...39f8</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                  <span style="color: var(--text-muted);">Network:</span>
+                  <span style="color: #000; font-weight: bold;">Ethereum Mainnet</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                  <span style="color: var(--text-muted);">Signed Status:</span>
+                  <span style="color: var(--success); font-weight: bold;">Connected</span>
+                </div>
+                <button id="btn-wallet-sign" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">Sign Verification Challenge</button>
+                <div id="wallet-sign-status" style="font-size: 0.75rem; color: var(--success); text-align: center; margin-top: 8px; display: none; font-weight: 800;">✓ Message Signed Successfully!</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trading journal logs -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #000000; padding-bottom: 8px;">
+              <div style="font-size: 1rem; font-weight: 900; text-transform: uppercase;">📖 Trading Journal</div>
+              <button id="btn-journal-export" class="btn btn-secondary" style="font-size: 0.7rem; padding: 4px 8px;">Export CSV</button>
+            </div>
+            <div id="journal-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;">
+              <div class="center-text">No closed trades.</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Execution Parameters -->
-    <div class="section-title">System Settings</div>
+    <!-- SUBTAB 3: BACKTESTER & BUILDERS -->
+    <div id="port-backtest" class="portfolio-subtab" style="display: none;">
+      <div class="options-grid">
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <!-- Strategy backtester -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Advanced Backtester Engine</div>
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.8rem; margin-bottom: 14px;">
+              <div>
+                <label for="backtest-rule-select">Target Strategy Rule</label>
+                <select id="backtest-rule-select" class="text-input" style="width: 100%;"></select>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                  <label for="backtest-period">Test Database Range</label>
+                  <select id="backtest-period" class="text-input" style="width: 100%;">
+                    <option value="1h">Last 1 hour</option>
+                    <option value="4h">Last 4 hours</option>
+                    <option value="24h">Last 24 hours</option>
+                    <option value="all">All Database History</option>
+                  </select>
+                </div>
+                <div style="flex: 1;">
+                  <label for="backtest-symbol">Active Asset Filter</label>
+                  <input type="text" id="backtest-symbol" class="text-input" placeholder="BTC/USD" style="width: 100%;">
+                </div>
+              </div>
+              <button id="btn-run-backtest" class="btn" style="width: 100%;">Run Backtest Scan</button>
+            </div>
 
-    <!-- Notifications -->
-    <div class="control-row">
-      <div class="control-label">
-        <span>Desktop Notifications</span>
-        <small>Show native notifications when compiled technical rules trigger.</small>
+            <div id="backtest-results" style="display: none; background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; padding: 14px; box-shadow: 2px 2px 0px #000000;">
+              <div style="font-weight: bold; margin-bottom: 8px; color: var(--primary); font-size: 0.9rem; text-transform: uppercase;">Simulation Results Summary</div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.8rem;">
+                <div>Trades Triggered: <span id="bt-trades" style="font-weight: 800; color: #000;">0</span></div>
+                <div>Net Profit/Loss: <span id="bt-profit" style="font-weight: 800; color: var(--success);">$0.00</span></div>
+                <div>Win Rate: <span id="bt-winrate" style="font-weight: 800; color: #000;">0%</span></div>
+                <div>Profit Factor: <span id="bt-factor" style="font-weight: 800; color: #000;">1.00</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parameter Optimizer -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Strategy Parameter Optimizer</div>
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.8rem; margin-bottom: 12px;">
+              <div>
+                <label for="optimizer-rule-select">Rule to Optimize</label>
+                <select id="optimizer-rule-select" class="text-input" style="width: 100%;"></select>
+              </div>
+              <button id="btn-run-optimizer" class="btn btn-secondary" style="width: 100%;">Run Optimizer Scan</button>
+            </div>
+            <div id="optimizer-results" style="display: none; background: #FFFFFF; border: 2px solid #000000; padding: 12px; border-radius: 4px; box-shadow: 2px 2px 0px #000000;">
+              <div style="font-weight: 800; text-transform: uppercase; color: var(--success); font-size: 0.8rem; margin-bottom: 8px;">Top Optimized Configurations</div>
+              <div id="optimizer-lines-container" style="display: flex; flex-direction: column; gap: 6px; font-family: monospace; font-size: 0.75rem;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <!-- Custom indicator compiler -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Indicator Builder GUI</div>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.8rem;">
+              <div style="display: flex; gap: 8px;">
+                <select id="ind-build-type" class="text-input" style="flex: 2;">
+                  <option value="RSI">RSI Oscillator</option>
+                  <option value="EMA">EMA Average</option>
+                  <option value="SMA">SMA Average</option>
+                  <option value="MACD">MACD Oscillator</option>
+                </select>
+                <input type="number" id="ind-build-period" class="text-input" value="14" style="flex: 1;">
+              </div>
+              <button id="btn-build-indicator" class="btn btn-secondary">Compile to DSL</button>
+              <div id="ind-build-output" style="font-family: monospace; font-size: 0.75rem; background: #000; color: #00FF66; padding: 10px; border-radius: 4px; display: none; line-height: 1.4;"></div>
+            </div>
+          </div>
+
+          <!-- Strategy logic builder -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Rule Compiler</div>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 0.8rem;">
+              <input type="text" id="strat-build-name" class="text-input" placeholder="Strategy / Rule Name" style="width: 100%;">
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <select id="strat-build-ind" class="text-input" style="flex: 2;">
+                  <option value="RSI">RSI</option>
+                  <option value="EMA">EMA</option>
+                  <option value="SMA">SMA</option>
+                  <option value="Price">Price</option>
+                </select>
+                <select id="strat-build-op" class="text-input" style="flex: 1;">
+                  <option value=">">&gt;</option>
+                  <option value="<">&lt;</option>
+                  <option value="==">==</option>
+                </select>
+                <input type="number" id="strat-build-val" class="text-input" value="30" style="flex: 1.5;">
+              </div>
+              <button id="btn-build-strategy" class="btn">Compile &amp; Save Rule</button>
+              <div id="strat-build-status" style="font-size: 0.75rem; text-align: center; color: var(--success); display: none; font-weight: 800;">✓ Rule Compiled &amp; Saved!</div>
+            </div>
+          </div>
+
+          <!-- Import/export strategies -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">JSON Strategy I/O</div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <textarea id="io-strategy-json" class="text-input" rows="3" placeholder="Paste strategy JSON here to import or export." style="font-family: monospace; font-size: 0.75rem; resize: none;"></textarea>
+              <div style="display: flex; gap: 8px;">
+                <button id="btn-strategy-import" class="btn btn-secondary" style="flex: 1;">Import JSON</button>
+                <button id="btn-strategy-export" class="btn btn-secondary" style="flex: 1;">Export Rules</button>
+              </div>
+              <div id="io-strategy-status" style="font-size: 0.75rem; color: var(--warning); text-align: center; display: none; font-weight: bold;"></div>
+            </div>
+          </div>
+
+          <!-- Backup & Recovery -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Database backups</div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-backup-export" class="btn btn-secondary" style="flex: 1;">Download Backup</button>
+              <label class="btn btn-secondary" style="flex: 1; cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center;">
+                Restore Backup
+                <input type="file" id="btn-backup-import" style="display: none;">
+              </label>
+            </div>
+            <div id="backup-status" style="font-size: 0.75rem; color: var(--success); text-align: center; margin-top: 8px; display: none; font-weight: bold;"></div>
+          </div>
+        </div>
       </div>
-      <label class="switch">
-        <input type="checkbox" id="toggle-notifications" checked>
-        <span class="slider"></span>
-      </label>
     </div>
 
-    <!-- Logging -->
-    <div class="control-row">
-      <div class="control-label">
-        <span>IndexedDB Candle Logging</span>
-        <small>Persist parsed candles locally for historical records and simulation logs.</small>
+    <!-- SUBTAB 4: SCANNERS -->
+    <div id="port-scanners" class="portfolio-subtab" style="display: none;">
+      <div class="options-grid">
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <!-- Multi-symbol watch dashboard -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Multi-Symbol Market Screener</div>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
+                <thead>
+                  <tr style="border-bottom: 2px solid #000; font-weight: bold;">
+                    <th style="padding: 6px;">Symbol</th>
+                    <th style="padding: 6px;">RSI (14)</th>
+                    <th style="padding: 6px;">EMA (9/21 Cross)</th>
+                    <th style="padding: 6px;">Action Trigger</th>
+                  </tr>
+                </thead>
+                <tbody id="screener-tbody">
+                  <!-- Screener rows populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Swing patterns & structures -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Market Structure &amp; Zone Alerts</div>
+            <div id="pattern-scanner-list" style="display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; box-shadow: 2px 2px 0px #000000; font-size: 0.8rem;">
+              <!-- Loaded dynamically by StructureEngine -->
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <!-- Candlestick scanner -->
+          <div class="glass-panel" style="margin-bottom: 0;">
+            <div class="section-title">Candlestick Formations Screener</div>
+            <div id="candlestick-screener-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8rem;">
+              <!-- Rendered dynamically by StructureEngine -->
+            </div>
+          </div>
+        </div>
       </div>
-      <label class="switch">
-        <input type="checkbox" id="toggle-logging" checked>
-        <span class="slider"></span>
-      </label>
     </div>
 
-    <!-- Supported Platforms -->
-    <div class="section-title">Supported Platforms & Providers</div>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
-      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
-        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
-          Quotex <span style="color: var(--success); font-size: 0.7rem; font-weight: bold; background: rgba(0, 230, 118, 0.1); padding: 2px 6px; border-radius: 4px;">ACTIVE</span>
-        </span>
-        <small style="font-size: 0.7rem; color: var(--text-muted);">Fully integrated Socket.IO parser.</small>
-      </div>
-      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
-        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
-          Binance <span style="color: var(--success); font-size: 0.7rem; font-weight: bold; background: rgba(0, 230, 118, 0.1); padding: 2px 6px; border-radius: 4px;">ACTIVE</span>
-        </span>
-        <small style="font-size: 0.7rem; color: var(--text-muted);">Fully integrated public WS stream parser.</small>
-      </div>
-      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
-        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
-          Bybit <span style="color: var(--success); font-size: 0.7rem; font-weight: bold; background: rgba(0, 230, 118, 0.1); padding: 2px 6px; border-radius: 4px;">ACTIVE</span>
-        </span>
-        <small style="font-size: 0.7rem; color: var(--text-muted);">Integrated V5 trade/kline parser.</small>
-      </div>
-      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px;">
-        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
-          TradingView <span style="color: var(--success); font-size: 0.7rem; font-weight: bold; background: rgba(0, 230, 118, 0.1); padding: 2px 6px; border-radius: 4px;">ACTIVE</span>
-        </span>
-        <small style="font-size: 0.7rem; color: var(--text-muted);">Integrated timescale/qsd quote parser.</small>
-      </div>
-      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px; grid-column: span 2;">
-        <span style="font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
-          Pocket Option <span style="color: var(--success); font-size: 0.7rem; font-weight: bold; background: rgba(0, 230, 118, 0.1); padding: 2px 6px; border-radius: 4px;">ACTIVE</span>
-        </span>
-        <small style="font-size: 0.7rem; color: var(--text-muted);">Integrated JSON quote array parser.</small>
-      </div>
-    </div>
+    <!-- SUBTAB 5: CALCULATORS -->
+    <div id="port-calculators" class="portfolio-subtab" style="display: none;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+        <!-- Risk calculator -->
+        <div class="glass-panel" style="margin-bottom: 0;">
+          <div class="section-title">Risk Management Calculator</div>
+          <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.8rem;">
+            <div>
+              <label for="risk-calc-balance">Account Balance ($)</label>
+              <input type="number" id="risk-calc-balance" class="text-input" value="10000" style="width: 100%;">
+            </div>
+            <div>
+              <label for="risk-calc-pct">Maximum Trade Risk limit (%)</label>
+              <input type="number" id="risk-calc-pct" class="text-input" value="2" style="width: 100%;">
+            </div>
+            <div style="background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; padding: 12px; box-shadow: 2px 2px 0px #000000; display: flex; justify-content: space-between; align-items: center; font-weight: bold;">
+              <span style="color: var(--text-muted);">Max Cash Risk Limit:</span>
+              <span id="risk-calc-result" style="color: var(--danger); font-size: 1.1rem;">$200.00 USD</span>
+            </div>
+          </div>
+        </div>
 
-    <!-- Verification Tests -->
-    <div class="section-title">Diagnostics</div>
-    <div class="control-row">
-      <div class="control-label">
-        <span>Alert Engine Verification</span>
-        <small>Triggers a test browser notification to verify permissions and system sounds.</small>
-      </div>
-      <button id="btn-test-notification" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px;">
-        Trigger Test
-      </button>
-    </div>
+        <!-- Position size calculator -->
+        <div class="glass-panel" style="margin-bottom: 0;">
+          <div class="section-title">Position Size Calculator</div>
+          <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.8rem;">
+            <div style="display: flex; gap: 8px;">
+              <div style="flex: 1;">
+                <label for="pos-calc-entry">Entry Price ($)</label>
+                <input type="number" id="pos-calc-entry" class="text-input" value="68000" style="width: 100%;">
+              </div>
+              <div style="flex: 1;">
+                <label for="pos-calc-sl">Stop Loss Price ($)</label>
+                <input type="number" id="pos-calc-sl" class="text-input" value="67500" style="width: 100%;">
+              </div>
+            </div>
+            <div style="background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; padding: 12px; box-shadow: 2px 2px 0px #000000; font-weight: bold; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-muted);">Required Position Units:</span>
+                <span id="pos-calc-result-units" style="color: var(--primary);">0.4000 Units</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 6px; margin-top: 4px;">
+                <span style="color: var(--text-muted);">Required Capital Size:</span>
+                <span id="pos-calc-result-cash" style="color: var(--primary);">$27,200.00 USD</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-    <!-- Footer Controls -->
-    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-      <span id="save-status" style="font-size: 0.8rem; align-self: center; margin-right: auto; display: none;">Settings saved!</span>
-      <button id="btn-save-settings" class="btn">Save Configuration</button>
+        <!-- Trade expectancy calculator -->
+        <div class="glass-panel" style="margin-bottom: 0;">
+          <div class="section-title">Mathematical Expectancy Calculator</div>
+          <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.8rem;">
+            <div style="display: flex; gap: 6px;">
+              <div style="flex: 1;">
+                <label for="exp-calc-winrate">Win Rate %</label>
+                <input type="number" id="exp-calc-winrate" class="text-input" value="60" style="width: 100%;">
+              </div>
+              <div style="flex: 1;">
+                <label for="exp-calc-win">Avg Win ($)</label>
+                <input type="number" id="exp-calc-win" class="text-input" value="300" style="width: 100%;">
+              </div>
+              <div style="flex: 1;">
+                <label for="exp-calc-loss">Avg Loss ($)</label>
+                <input type="number" id="exp-calc-loss" class="text-input" value="150" style="width: 100%;">
+              </div>
+            </div>
+            <div style="background: #FFFFFF; border: 2px solid #000000; border-radius: 4px; padding: 12px; box-shadow: 2px 2px 0px #000000; display: flex; justify-content: space-between; align-items: center; font-weight: bold;">
+              <span style="color: var(--text-muted);">Expectancy Value:</span>
+              <span id="exp-calc-result" style="color: var(--success); font-size: 1rem;">+$120.00 USD / Trade</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <script src="options.js"></script>
+  <!-- Tab 4: Navigation Guide -->
+  <div id="opt-guide" class="options-tab-content">
+    <div class="guide-card">
+      <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 16px; border-bottom: 2px solid #000; padding-bottom: 8px;">
+        🚀 WELCOME TO PRAESCIUS
+      </h2>
+      <p style="font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px; color: var(--text-muted);">
+        Praescius by Nanduri Labs is an advanced market observer Chrome Extension that intercepts live charts, parses trade data, compiles quantitative strategies using an in-memory compiler, and translates criteria in English directly into rules using Gemini AI.
+      </p>
+
+      <div class="guide-step">
+        <div class="step-number">1</div>
+        <div class="step-desc">
+          <strong>Configure AI Translation</strong>
+          Setup your Gemini API key in the <strong>Core &amp; AI</strong> tab. This enables you to enter English descriptions like <i>"Notify me when RSI exceeds 70 and close is in top 10%"</i> and automatically translate them into compiled quantitative rules.
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-number">2</div>
+        <div class="step-desc">
+          <strong>Connect Your Web3 Wallet</strong>
+          Verify your developer profile or strategy signature using wallet integrations. Connect your wallet in the <strong>Portfolio Hub (Paper &amp; Wallet)</strong> tab to sign verification payloads. This is a mock connector allowing instant personal signatures.
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-number">3</div>
+        <div class="step-desc">
+          <strong>Run Simulations in Developer Panel</strong>
+          Use the <strong>Developer Panel</strong> to load historical data (candles.jsonl) and simulate ticks. Watch the parser process binary payload tuples, monitor telemetry latencies, check cache-hits, and review console outputs in real-time.
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-number">4</div>
+        <div class="step-desc">
+          <strong>Create Custom Indicators &amp; Run Backtests</strong>
+          Use the **Backtester &amp; Builders** subtab in Portfolio Hub to write custom quantitative indicators, run parameter scan updates, view correlation metrics, review paper positions, and export trading logs to CSV.
+        </div>
+      </div>
+    </div>
+
+    <!-- Rule compilation guide -->
+    <div class="guide-card">
+      <h2 style="font-size: 1.1rem; font-weight: 900; margin-bottom: 12px; border-bottom: 2px solid #000; padding-bottom: 6px;">
+        💡 PROMPT TO RULE SYNTAX EXAMPLES
+      </h2>
+      <p style="font-size: 0.85rem; line-height: 1.5; color: var(--text-muted); margin-bottom: 16px;">
+        When creating custom notification rules on the extension sidebar, write clear English instructions. Here are some supported rules Gemini AI compiles:
+      </p>
+      <ul style="font-size: 0.85rem; list-style-type: square; margin-left: 20px; line-height: 1.6; display: flex; flex-direction: column; gap: 8px;">
+        <li><code>"Notify me when RSI(14) is below 30 and price is near lower Bollinger Band"</code> (Momentum Oversold check).</li>
+        <li><code>"Send an alert when there is a Bullish Engulfing pattern on high volume"</code> (Candlestick formation check).</li>
+        <li><code>"Notify when MACD Hist is positive and EMA(9) crosses above EMA(21)"</code> (Trend continuation check).</li>
+        <li><code>"Notify me when the lower wick ratio exceeds 60% and close is in top 10% of candle range"</code> (Liquidity Sweep check).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Tab 5: User Profile -->
+  <div id="opt-profile" class="options-tab-content" style="display: none;">
+    <div style="max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
+      <!-- Profile Summary Card -->
+      <div class="glass-panel" style="margin-bottom: 0;">
+        <div class="section-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          Trader Profile
+        </div>
+        <div style="display: flex; gap: 20px; align-items: center; border-bottom: 2px solid #000000; padding-bottom: 16px; margin-bottom: 16px;">
+          <div style="width: 70px; height: 70px; border: 2px solid #000000; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 2rem; box-shadow: 2px 2px 0px #000000; flex-shrink: 0;">
+            👤
+          </div>
+          <div>
+            <h2 style="font-size: 1.2rem; font-weight: 900; margin: 0; color: #000000;">Praescius Trader</h2>
+            <div style="font-size: 0.75rem; font-weight: 800; background: #000000; color: var(--primary); padding: 2px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
+              Ultra Tier Member
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div style="border: 2px solid #000000; padding: 10px; background: #FFFFFF; box-shadow: 2px 2px 0px #000000;">
+            <div style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Total Active Rules</div>
+            <div style="font-size: 1.5rem; font-weight: 900; color: #000000; font-family: monospace; margin-top: 4px;">174 (Synced)</div>
+          </div>
+          <div style="border: 2px solid #000000; padding: 10px; background: #FFFFFF; box-shadow: 2px 2px 0px #000000;">
+            <div style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Simulated Win Rate</div>
+            <div style="font-size: 1.5rem; font-weight: 900; color: var(--success); font-family: monospace; margin-top: 4px;">68.4%</div>
+          </div>
+        </div>
+
+        <div style="font-size: 0.8rem; line-height: 1.5;">
+          <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+            <span style="color: var(--text-muted);">Account Level:</span>
+            <span style="font-weight: bold;">Developer License</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+            <span style="color: var(--text-muted);">Registered Email:</span>
+            <span style="font-weight: bold;">trader@nandurilabs.com</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border-color);">
+            <span style="color: var(--text-muted);">Support Handle:</span>
+            <span style="font-weight: bold; color: var(--primary);"><a href="mailto:nandurilabs@gmail.com" style="color: inherit; text-decoration: underline;">nandurilabs@gmail.com</a></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Wallet setup in profile tab (Needed for quick set up) -->
+      <div class="glass-panel" style="margin-bottom: 0;">
+        <div class="section-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><line x1="12" y1="10" x2="12" y2="10"></line></svg>
+          Quick Wallet Setup
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+          Link your Web3 simulated wallet to authorize instant smart transactions. This acts as a high-speed developer shortcut bypassing option redirects.
+        </p>
+        <button id="btn-profile-wallet-connect" class="btn" style="width: 100%; margin-bottom: 8px;">
+          Connect Web3 Wallet
+        </button>
+        <div id="profile-wallet-details" style="display: none; border: 2px solid #000000; padding: 10px; background: #FFFFFF; box-shadow: 2px 2px 0px #000000; margin-top: 10px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.75rem;">
+            <span style="color: var(--text-muted);">Status:</span>
+            <span style="font-weight: bold; color: var(--success);">Connected</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.75rem;">
+            <span style="color: var(--text-muted);">Address:</span>
+            <span id="profile-wallet-addr" style="font-family: monospace; font-weight: bold;">0x...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="options.js"></script>
+  <script type="module" src="portfolio.js"></script>
 </body>
 </html>

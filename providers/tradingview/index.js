@@ -17,37 +17,6 @@ export class TradingViewProvider extends BaseProvider {
     return hostname.includes('tradingview.com') || cleanTitle.includes('tradingview');
   }
 
-  async discover() {
-    console.log('[TradingView Provider] Running environment discovery...');
-    return {
-      chartEngine: 'TradingView Canvas Chart Engine',
-      transport: 'WebSocket (Pro Chart Protocol)',
-      dataSource: 'TradingView WebSocket API',
-      confidence: 1.0
-    };
-  }
-
-  connect() {
-    console.log('[TradingView Provider] Hooking chart sockets...');
-    return true;
-  }
-
-  async getCandles() {
-    return [];
-  }
-
-  async getTicks() {
-    return [];
-  }
-
-  getSymbol() {
-    return this.currentSymbol;
-  }
-
-  disconnect() {
-    console.log('[TradingView Provider] Disconnected.');
-    return true;
-  }
 
   isMetadataSymbol(symbol) {
     if (!symbol) return true;

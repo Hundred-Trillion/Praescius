@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Aetheris Market Observer",
+  "name": "Praescius",
   "version": "2.0.0",
-  "description": "Extensible multi-broker market observer featuring modular plugins, Event Bus architecture, local rules engine, and AI translators.",
+  "description": "Extensible multi-broker market observer by Nanduri Labs featuring modular plugins, Event Bus architecture, local rules engine, and AI translators.",
   "permissions": [
     "storage",
     "notifications"
@@ -56,13 +56,12 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "discovery/discovery.js",
-        "discovery/canvas.js",
-        "discovery/websocket.js",
-        "discovery/pixijs.js",
-        "discovery/storage.js",
-        "discovery/globals.js",
-        "plugins/**/*"
+        "ui/*",
+        "storage/*",
+        "core/*",
+        "strategies/*",
+        "logs/*",
+        "icons/*"
       ],
       "matches": [
         "<all_urls>"
@@ -70,7 +69,6 @@
     }
   ],
   "action": {
-    "default_popup": "ui/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
