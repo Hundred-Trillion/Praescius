@@ -71,12 +71,21 @@ const COMMAND_HANDLERS = {
     sendResponse({ success: true, tabId: tabId });
   },
   'GET_ACTIVE_SESSION_ID': async (message, sender, sendResponse, database) => {
+    let tabId = sender.tab ? sender.tab.id : 'default';
+    
+    // If the sender's tab is actively tracking a broker, use its own ID (for sidebars)
+    if (sessions[tabId] && (sessions[tabId].state === 'LIVE_WS' || sessions[tabId].state === 'LIVE_DOM')) {
+      sendResponse({ success: true, tabId: tabId });
+      return;
+    }
+
+    // Otherwise (e.g. standalone options page), attach to the first active broker tab
     let activeTabId = Object.keys(sessions).find(id => {
       const state = sessions[id].state;
       return state === 'LIVE_WS' || state === 'LIVE_DOM' || state === 'REPLAY';
     });
-    if (!activeTabId) activeTabId = sender.tab ? sender.tab.id : 'default';
-    sendResponse({ success: true, tabId: activeTabId });
+    
+    sendResponse({ success: true, tabId: activeTabId || tabId });
   },
   'WS_FRAME': async (message, sender, sendResponse, database) => {
     const wsTabId = sender.tab ? sender.tab.id : 'default';
