@@ -31,17 +31,6 @@ function safeSendMessage(message, callback) {
   }
 }
 
-// 1. Inject the extension asset path into the main page context
-try {
-  if (isContextValid()) {
-    const seedScript = document.createElement('script');
-    seedScript.textContent = `window.__PRAESCIUS_EXTENSION_URL__ = "${chrome.runtime.getURL('')}";`;
-    (document.head || document.documentElement).appendChild(seedScript);
-    seedScript.remove();
-  }
-} catch (err) {
-  console.error('[Praescius_Content] Failed to seed extension URL:', err);
-}
 
 // 2. Listen to postMessage frames and relay to service worker
 let lastWsMessageTime = Date.now();
