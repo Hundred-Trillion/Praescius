@@ -113,42 +113,42 @@
       </div>
     </div>
 
-    <!-- Live Metrics -->
-    <div class="glass-panel">
+    <!-- Live Metrics (Multi-Symbol Carousel) -->
+    <div class="glass-panel" id="live-metrics-panel">
       <h2>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
         Live Metrics
+        <span id="live-stream-count" style="margin-left: auto; font-size: 0.6rem; font-weight: 700; color: var(--text-muted); text-transform: none;">0 streams</span>
       </h2>
-      <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px;">
+
+      <!-- Symbol Nav Pills + Arrows -->
+      <div id="symbol-nav" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;">
+        <!-- Symbol pills row -->
+        <div id="symbol-pills" style="display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 2px;">
+        </div>
+        <!-- Arrow nav + counter row -->
+        <div id="carousel-controls" style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+          <button id="carousel-prev" class="carousel-arrow" title="Previous chart">
+            <span style="font-size: 1rem; font-weight: bold; line-height: 0;">←</span>
+          </button>
+          <span id="carousel-counter" style="font-size: 0.8rem; font-weight: 900; color: var(--text-main); font-family: monospace; min-width: 40px; text-align: center; user-select: none;">—</span>
+          <button id="carousel-next" class="carousel-arrow" title="Next chart">
+            <span style="font-size: 1rem; font-weight: bold; line-height: 0;">→</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scrollable Metrics Slides Container -->
+      <div id="metrics-carousel" style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0; scrollbar-width: none; -ms-overflow-style: none; scroll-behavior: smooth;">
+        <!-- Dynamically filled by ChartsPanel.js -->
+        <div id="metrics-empty-state" class="metrics-slide" style="min-width: 100%; scroll-snap-align: start; text-align: center; color: var(--text-muted); font-size: 0.75rem; padding: 20px 0;">
+          Waiting for live data streams...
+        </div>
+      </div>
+
+      <!-- Global DB Stats (shared across all symbols) -->
+      <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px; margin-top: 10px; border-top: 2px solid var(--border-color); padding-top: 10px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="color: var(--text-muted);">Live Price:</span>
-          <span id="live-price" style="font-family: monospace; font-size: 1.15rem; font-weight: 900; color: var(--text-main);">0.00000</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
-          <span style="color: var(--text-muted);">1m Candle Change:</span>
-          <span id="live-change" style="font-weight: bold;">0.00%</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
-          <span style="color: var(--text-muted);">Live Candle OHLC:</span>
-          <span id="live-ohlc" style="font-family: monospace; font-weight: bold; font-size: 0.75rem;">O:0 H:0 L:0 C:0</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
-          <span style="color: var(--text-muted);">Last Candle OHLC:</span>
-          <span id="last-ohlc" style="font-family: monospace; font-weight: bold; font-size: 0.75rem;">Waiting for 1m close...</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
-          <span style="color: var(--text-muted);">Minute Tick Volume:</span>
-          <span id="live-tick-vol" style="font-family: monospace; font-weight: bold;">0 ticks</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
-          <span style="color: var(--text-muted);">Live Trend (EMA 9/21):</span>
-          <span id="live-ema" style="font-family: monospace; font-weight: bold; font-size: 0.75rem;">Waiting for 21m data...</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
-          <span style="color: var(--text-muted);">Market Regime:</span>
-          <span id="live-regime" style="font-weight: bold; font-size: 0.75rem;">Waiting for 21m data...</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
           <span style="color: var(--text-muted);">Total DB Writes:</span>
           <span id="perf-db-writes" style="font-weight: bold; font-family: monospace;">0 writes</span>
         </div>
@@ -174,6 +174,34 @@
         Set Notification Rule
       </button>
       <div id="prompt-status" style="margin-top: 8px; font-size: 0.75rem; display: none;"></div>
+    </div>
+
+    <!-- Quick Buttons -->
+    <div class="glass-panel" id="quick-buttons-panel">
+      <h2>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        Quick Buttons
+      </h2>
+      <div style="font-size: 0.68rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.4;">
+        One-click activate sir's candlestick pattern scanners. These run in real-time on every completed 1-minute candle and alert via Telegram.
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button id="btn-quick-shooting-star" class="btn btn-secondary" style="width: 100%; font-size: 0.72rem; padding: 10px; justify-content: flex-start; gap: 10px;">
+          <span style="font-size: 1rem;">🔥</span>
+          <span style="display: flex; flex-direction: column; align-items: flex-start; text-transform: none; letter-spacing: 0;">
+            <strong style="text-transform: uppercase; letter-spacing: 0.5px;">Shooting Star Reversal</strong>
+            <span style="font-size: 0.62rem; font-weight: 600; color: var(--text-muted); margin-top: 1px;">Red candle 67%+ upper wick → Green breakout above high</span>
+          </span>
+        </button>
+        <button id="btn-quick-bull-engulf" class="btn btn-secondary" style="width: 100%; font-size: 0.72rem; padding: 10px; justify-content: flex-start; gap: 10px;">
+          <span style="font-size: 1rem;">🐂</span>
+          <span style="display: flex; flex-direction: column; align-items: flex-start; text-transform: none; letter-spacing: 0;">
+            <strong style="text-transform: uppercase; letter-spacing: 0.5px;">Bullish Engulfing</strong>
+            <span style="font-size: 0.62rem; font-weight: 600; color: var(--text-muted); margin-top: 1px;">Clean red→green engulfing, &lt;15% upper wicks</span>
+          </span>
+        </button>
+      </div>
+      <div id="quick-btn-status" style="margin-top: 8px; font-size: 0.7rem; text-align: center; display: none; font-weight: 700;"></div>
     </div>
 
     <!-- Active Rules List -->

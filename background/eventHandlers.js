@@ -39,6 +39,114 @@ const COOLDOWN_MS = 60 * 1000;
 
 import { tickAggregator } from '../core/TickAggregator.js';
 
+async function sendTelegram(message) {
+  try {
+    const res = await new Promise(resolve => chrome.storage.local.get(['settings'], resolve));
+    const settings = res.settings || {};
+    const token = settings.telegramToken;
+    const chatId = settings.telegramChatId;
+    if (!token || !chatId) return;
+
+    await fetch(
+      `https://api.telegram.org/bot${token}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: message })
+      }
+    );
+  } catch (err) {
+    console.error("Telegram Error:", err);
+  }
+}
+
+async function detectPattern(symbol) {
+  const candles = tickAggregator.getCandles(symbol);
+  if (!candles || candles.length < 3) return;
+
+  // Use previous two completed candles (current is still forming)
+  const current = candles[candles.length - 2];
+  const previous = candles[candles.length - 3];
+
+  // --- Candle colors ---
+  const previousRed = previous.close < previous.open;
+  const currentGreen = current.close > current.open;
+
+  // --- Wick calculations (current) ---
+  const currentRange = current.high - current.low;
+  const currentUpperWick = current.high - Math.max(current.open, current.close);
+  const currentUpperPercent = currentRange > 0 ? (currentUpperWick / currentRange) * 100 : 0;
+
+  // --- Wick calculations (previous) ---
+  const prevRange = previous.high - previous.low;
+  if (prevRange <= 0) return;
+
+  const prevUpperWick = previous.high - Math.max(previous.open, previous.close);
+  const prevLowerWick = Math.min(previous.open, previous.close) - previous.low;
+  const prevUpperPercent = (prevUpperWick / prevRange) * 100;
+  const prevLowerPercent = (prevLowerWick / prevRange) * 100;
+
+  // ==============================
+  // Pattern A: Shooting Star Reversal Breakout
+  // ==============================
+  const shootingStarCondition =
+    currentUpperPercent < 10 &&
+    previousRed &&
+    prevUpperPercent > 67 &&
+    currentGreen &&
+    current.close > previous.high;
+
+  if (shootingStarCondition) {
+    console.log("🔥 SHOOTING STAR REVERSAL FOUND:", symbol);
+
+    const message =
+`🔥 Pattern Detected
+
+Pair : ${symbol}
+
+Previous Candle
+Open : ${previous.open}
+High : ${previous.high}
+Low  : ${previous.low}
+Close: ${previous.close}
+Upper Wick : ${prevUpperPercent.toFixed(2)}%
+Lower Wick : ${prevLowerPercent.toFixed(2)}%
+
+Current Candle
+Open : ${current.open}
+High : ${current.high}
+Low  : ${current.low}
+Close: ${current.close}
+
+Time : ${new Date(current.time).toLocaleString()}`;
+
+    await sendTelegram(message);
+  }
+
+  // ==============================
+  // Pattern B: Bullish Engulfing (Clean Wick)
+  // ==============================
+  const currRange_en = current.high - current.low;
+  const currUpperWick_en = current.high - Math.max(current.open, current.close);
+  const currLowerWick_en = Math.min(current.open, current.close) - current.low;
+  const prevUpperPercent_en = (prevUpperWick / prevRange) * 100;
+  const currUpperPercent_en = currRange_en > 0 ? (currUpperWick_en / currRange_en) * 100 : 0;
+
+  const engulfingCondition =
+    previous.close < previous.open &&
+    current.close > current.open &&
+    current.close > previous.open &&
+    prevUpperPercent_en < 15 &&
+    currUpperPercent_en < 15 &&
+    prevUpperWick < prevLowerWick &&
+    currUpperWick_en < currLowerWick_en;
+
+  if (engulfingCondition) {
+    console.log("🐂 BULLISH ENGULFING FOUND:", symbol);
+    await sendTelegram(`🐂 Bull Engulf Detected\nPair : ${symbol}\nTime : ${new Date(current.time).toLocaleString()}`);
+  }
+}
+
 function evaluateActiveRules(symbol, tabId, isHistorical = false) {
   if (isHistorical || globalState.killSwitch) return;
   const cache = tickAggregator.getCandles(symbol);
@@ -252,6 +360,14 @@ export function registerEventHandlers() {
     if (minuteChanged) {
       const buffer = tickAggregator.getCandles(symbol);
       const completedCandle = buffer.length > 1 ? buffer[buffer.length - 2] : null;
+
+      await detectPattern(symbol);
+
+      if (completedCandle) {
+        console.log(
+          `${symbol} | O:${completedCandle.open} H:${completedCandle.high} L:${completedCandle.low} C:${completedCandle.close}`
+        );
+      }
 
       if (buffer.length > 21 && stream) {
         let ema9 = null, ema21 = null, rsi = null;

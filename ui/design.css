@@ -683,5 +683,93 @@ h1, h2, h3, h4, h5, h6 {
   color: #000000 !important;
 }
 
+/* ===== Multi-Symbol Metrics Carousel ===== */
 
+/* Hide scrollbar on carousel and pill containers */
+#metrics-carousel::-webkit-scrollbar,
+#symbol-pills::-webkit-scrollbar {
+  display: none;
+}
+
+/* Each slide takes full width of the carousel */
+.metrics-slide {
+  min-width: 100%;
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* Symbol navigation pills — bigger, clearer, more tappable */
+.sym-pill {
+  flex-shrink: 0;
+  font-size: 0.65rem !important;
+  font-weight: 900 !important;
+  padding: 5px 10px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  white-space: nowrap;
+  min-width: unset !important;
+  height: 26px !important;
+  line-height: 1 !important;
+  background: #FFFFFF !important;
+  color: #000 !important;
+  border: 2px solid #000 !important;
+  box-shadow: 2px 2px 0px #000 !important;
+  transition: all 0.1s ease !important;
+}
+
+.sym-pill:hover {
+  background: var(--primary) !important;
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 3px 3px 0px #000 !important;
+}
+
+.sym-pill:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow: 0px 0px 0px #000 !important;
+}
+
+/* Active pill state — set by JS */
+.sym-pill.active {
+  background: var(--primary) !important;
+  box-shadow: 3px 3px 0px #000 !important;
+}
+
+/* Carousel chevron arrow buttons — look like navigation, NOT play/pause */
+.carousel-arrow {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: unset !important;
+  padding: 0 !important;
+  border: 2px solid #000 !important;
+  border-radius: 50% !important;
+  background: #000 !important;
+  color: #FFF !important;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.3) !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.12s ease !important;
+}
+
+.carousel-arrow svg {
+  stroke: #FFFFFF;
+}
+
+.carousel-arrow:hover {
+  background: var(--primary) !important;
+  transform: scale(1.1) !important;
+  box-shadow: 3px 3px 0px #000 !important;
+}
+
+.carousel-arrow:hover svg {
+  stroke: #000000;
+}
+
+.carousel-arrow:active {
+  transform: scale(0.95) translate(1px, 1px) !important;
+  box-shadow: 0px 0px 0px #000 !important;
+}
 

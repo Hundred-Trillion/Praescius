@@ -4,8 +4,6 @@
 import { getCandles } from '../../storage/db.js';
 import { getUIStore, getTabId } from './UIState.js';
 
-let lastPrice = null;
-
 export function updateConnectionStatus(isOnline, latestCandle) {
   const pill = document.getElementById('connection-status');
   const text = pill ? pill.querySelector('.text') : null;
@@ -36,71 +34,197 @@ export function updateDiscoveryReport(report, activeProvider) {
   }
 }
 
-export function updateLiveMonitor(candle, lastCompletedCandle) {
-  if (!candle) return;
-  const symEl = document.getElementById('disc-asset');
-  const priceEl = document.getElementById('live-price');
-  if (symEl) symEl.textContent = candle.symbol;
-  if (!priceEl) return;
+/**
+ * Multi-symbol carousel: builds per-symbol slides and navigation pills.
+ * Each symbol gets its own fully independent metrics display.
+ */
+const lastPrices = {};       // per-symbol last price tracking
+const slideElements = {};    // per-symbol slide DOM cache
+let currentSlideIndex = 0;
 
+function getOrCreateSlide(symbol) {
+  if (slideElements[symbol]) return slideElements[symbol];
+
+  const carousel = document.getElementById('metrics-carousel');
+  if (!carousel) return null;
+
+  // Remove the empty-state placeholder if it exists
+  const empty = document.getElementById('metrics-empty-state');
+  if (empty) empty.remove();
+
+  const slide = document.createElement('div');
+  slide.className = 'metrics-slide';
+  slide.dataset.symbol = symbol;
+  slide.style.cssText = 'min-width: 100%; scroll-snap-align: start; flex-shrink: 0;';
+
+  const row = (label, id) => `
+    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
+      <span style="color: var(--text-muted);">${label}</span>
+      <span id="${id}" style="font-family: monospace; font-weight: bold; font-size: 0.75rem;">—</span>
+    </div>`;
+
+  slide.innerHTML = `
+    <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="color: var(--text-muted);">Live Price:</span>
+        <span data-field="price" style="font-family: monospace; font-size: 1.15rem; font-weight: 900; color: var(--text-main);">0.00000</span>
+      </div>
+      ${row('1m Candle Change:', `__unused__`).replace('id="__unused__"', 'data-field="change"')}
+      ${row('Live Candle OHLC:', `__unused__`).replace('id="__unused__"', 'data-field="ohlc"')}
+      ${row('Last Candle OHLC:', `__unused__`).replace('id="__unused__"', 'data-field="last-ohlc"').replace('—', 'Waiting for 1m close...')}
+      ${row('Minute Tick Volume:', `__unused__`).replace('id="__unused__"', 'data-field="tick-vol"').replace('—', '0 ticks')}
+      ${row('Live Trend (EMA 9/21):', `__unused__`).replace('id="__unused__"', 'data-field="ema"').replace('—', 'Waiting for 21m data...')}
+      ${row('Market Regime:', `__unused__`).replace('id="__unused__"', 'data-field="regime"').replace('—', 'Waiting for 21m data...')}
+    </div>
+  `;
+
+  carousel.appendChild(slide);
+  slideElements[symbol] = slide;
+  return slide;
+}
+
+function getField(slide, fieldName) {
+  return slide.querySelector(`[data-field="${fieldName}"]`);
+}
+
+function updateSlide(symbol, candle, lastCompletedCandle, indicators) {
+  const slide = getOrCreateSlide(symbol);
+  if (!slide || !candle) return;
+
+  const priceEl = getField(slide, 'price');
   const cur = candle.price !== undefined ? candle.price : candle.close;
-  priceEl.textContent = cur.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 10 });
 
-  if (lastPrice !== null && lastPrice !== cur) {
-    if (cur > lastPrice) {
-      priceEl.style.color = 'var(--success)';
-      priceEl.style.textShadow = '0 0 12px var(--success-glow)';
-    } else {
-      priceEl.style.color = 'var(--danger)';
-      priceEl.style.textShadow = '0 0 12px rgba(255, 23, 68, 0.5)';
+  if (priceEl) {
+    priceEl.textContent = cur.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 10 });
+
+    const prev = lastPrices[symbol];
+    if (prev !== undefined && prev !== cur) {
+      priceEl.style.color = cur > prev ? 'var(--success)' : 'var(--danger)';
+      priceEl.style.textShadow = cur > prev ? '0 0 12px var(--success-glow)' : '0 0 12px rgba(255, 23, 68, 0.5)';
+      setTimeout(() => { priceEl.style.color = ''; priceEl.style.textShadow = ''; }, 450);
     }
-
-    setTimeout(() => {
-      priceEl.style.color = '';
-      priceEl.style.textShadow = '';
-    }, 450);
+    lastPrices[symbol] = cur;
   }
-  lastPrice = cur;
 
-  const changeEl = document.getElementById('live-change');
+  const changeEl = getField(slide, 'change');
   if (changeEl && candle.open) {
     const chg = ((cur - candle.open) / candle.open) * 100;
     changeEl.textContent = (chg > 0 ? '+' : '') + chg.toFixed(5) + '%';
     changeEl.style.color = chg >= 0 ? 'var(--success)' : 'var(--danger)';
   }
 
-  const ohlcEl = document.getElementById('live-ohlc');
+  const ohlcEl = getField(slide, 'ohlc');
   if (ohlcEl && candle.open !== undefined) {
     ohlcEl.textContent = `O:${candle.open.toFixed(6)} H:${candle.high.toFixed(6)} L:${candle.low.toFixed(6)} C:${candle.close.toFixed(6)}`;
   }
-  
-  const lastOhlcEl = document.getElementById('last-ohlc');
+
+  const lastOhlcEl = getField(slide, 'last-ohlc');
   if (lastOhlcEl && lastCompletedCandle && lastCompletedCandle.open !== undefined) {
     lastOhlcEl.textContent = `O:${lastCompletedCandle.open.toFixed(6)} H:${lastCompletedCandle.high.toFixed(6)} L:${lastCompletedCandle.low.toFixed(6)} C:${lastCompletedCandle.close.toFixed(6)}`;
   }
-  
-  const tickVolEl = document.getElementById('live-tick-vol');
+
+  const tickVolEl = getField(slide, 'tick-vol');
   if (tickVolEl && candle.volume !== undefined) {
     tickVolEl.textContent = `${candle.volume} ticks`;
   }
-  
-  const emaEl = document.getElementById('live-ema');
-  if (emaEl && candle.ema9 !== undefined && candle.ema21 !== undefined) {
-    const trendText = candle.ema9 > candle.ema21 ? 'Bullish (9>21)' : (candle.ema9 < candle.ema21 ? 'Bearish (9<21)' : 'Neutral');
-    const color = candle.ema9 > candle.ema21 ? 'var(--success)' : (candle.ema9 < candle.ema21 ? 'var(--danger)' : 'var(--text-muted)');
-    emaEl.innerHTML = `<span style="color: ${color};">${candle.ema9.toFixed(6)} / ${candle.ema21.toFixed(6)} [${trendText}]</span>`;
+
+  // EMA / Regime can come from candle properties OR from indicators object
+  const ema9 = candle.ema9 !== undefined ? candle.ema9 : (indicators?.ema9 ?? null);
+  const ema21 = candle.ema21 !== undefined ? candle.ema21 : (indicators?.ema21 ?? null);
+  const regime = candle.regime || (indicators?.regime ?? null);
+
+  const emaEl = getField(slide, 'ema');
+  if (emaEl && ema9 !== null && ema21 !== null) {
+    const trendText = ema9 > ema21 ? 'Bullish (9>21)' : (ema9 < ema21 ? 'Bearish (9<21)' : 'Neutral');
+    const color = ema9 > ema21 ? 'var(--success)' : (ema9 < ema21 ? 'var(--danger)' : 'var(--text-muted)');
+    emaEl.innerHTML = `<span style="color: ${color};">${ema9.toFixed(6)} / ${ema21.toFixed(6)} [${trendText}]</span>`;
   }
 
-  const regimeEl = document.getElementById('live-regime');
-  if (regimeEl && candle.regime) {
-    regimeEl.textContent = candle.regime;
-    if (candle.regime.includes('Bull')) regimeEl.style.color = 'var(--success)';
-    else if (candle.regime.includes('Bear')) regimeEl.style.color = 'var(--danger)';
+  const regimeEl = getField(slide, 'regime');
+  if (regimeEl && regime) {
+    regimeEl.textContent = regime;
+    if (regime.includes('Bull')) regimeEl.style.color = 'var(--success)';
+    else if (regime.includes('Bear')) regimeEl.style.color = 'var(--danger)';
     else regimeEl.style.color = 'var(--warning)';
   }
 }
 
-export function updateMetrics(stats, latestCandle, lastCompletedCandle) {
+function updateSymbolPills(symbols) {
+  const pillsContainer = document.getElementById('symbol-pills');
+  const countEl = document.getElementById('live-stream-count');
+  if (!pillsContainer) return;
+
+  if (countEl) countEl.textContent = `${symbols.length} stream${symbols.length !== 1 ? 's' : ''}`;
+
+  const controlsEl = document.getElementById('carousel-controls');
+  if (controlsEl) {
+    controlsEl.style.display = symbols.length > 1 ? 'flex' : 'none';
+  }
+
+  const counterEl = document.getElementById('carousel-counter');
+  if (counterEl && symbols.length > 0) {
+    counterEl.textContent = `${currentSlideIndex + 1} / ${symbols.length}`;
+  }
+
+  // Only rebuild pills if the symbol set changed
+  const existingSymbols = [...pillsContainer.querySelectorAll('.sym-pill')].map(p => p.dataset.symbol);
+  const changed = symbols.length !== existingSymbols.length || symbols.some((s, i) => s !== existingSymbols[i]);
+  if (!changed) return;
+
+  pillsContainer.innerHTML = '';
+  symbols.forEach((sym, idx) => {
+    const pill = document.createElement('button');
+    pill.className = 'sym-pill';
+    if (idx === currentSlideIndex) pill.classList.add('active');
+    pill.dataset.symbol = sym;
+    pill.textContent = sym;
+    pill.addEventListener('click', () => scrollToSlide(idx));
+    pillsContainer.appendChild(pill);
+  });
+}
+
+function scrollToSlide(index) {
+  const carousel = document.getElementById('metrics-carousel');
+  if (!carousel) return;
+  const slides = carousel.querySelectorAll('.metrics-slide');
+  if (index < 0 || index >= slides.length) return;
+
+  currentSlideIndex = index;
+  slides[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+
+  // Update pill active state
+  const pills = document.querySelectorAll('#symbol-pills .sym-pill');
+  pills.forEach((p, i) => {
+    if (i === index) {
+      p.classList.add('active');
+    } else {
+      p.classList.remove('active');
+    }
+  });
+
+  const counterEl = document.getElementById('carousel-counter');
+  if (counterEl) {
+    counterEl.textContent = `${index + 1} / ${slides.length}`;
+  }
+}
+
+// Initialize arrow button listeners
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('carousel-prev')?.addEventListener('click', () => {
+    scrollToSlide(Math.max(0, currentSlideIndex - 1));
+  });
+  document.getElementById('carousel-next')?.addEventListener('click', () => {
+    const carousel = document.getElementById('metrics-carousel');
+    const count = carousel ? carousel.querySelectorAll('.metrics-slide').length : 0;
+    scrollToSlide(Math.min(count - 1, currentSlideIndex + 1));
+  });
+});
+
+/**
+ * Called by the poll cycle with allStreams data from the router.
+ * Falls back to single-candle mode for backward compatibility.
+ */
+export function updateMetrics(stats, latestCandle, lastCompletedCandle, allStreams) {
   const candlesEl = document.getElementById('metric-candles');
   const dbWritesEl = document.getElementById('perf-db-writes');
 
@@ -108,8 +232,29 @@ export function updateMetrics(stats, latestCandle, lastCompletedCandle) {
     if (candlesEl) candlesEl.textContent = stats.totalLogged || 0;
     if (dbWritesEl) dbWritesEl.textContent = `${stats.totalLogged || 0} writes`;
   }
-  if (latestCandle) {
-    updateLiveMonitor(latestCandle, lastCompletedCandle);
+
+  // Multi-symbol mode
+  if (allStreams && allStreams.length > 0) {
+    const symbols = allStreams.map(s => s.symbol);
+    updateSymbolPills(symbols);
+
+    for (const stream of allStreams) {
+      updateSlide(stream.symbol, stream.latestCandle, stream.lastCompletedCandle, stream.indicators);
+    }
+
+    // Also update the disc-asset with the currently visible symbol
+    const symEl = document.getElementById('disc-asset');
+    if (symEl && allStreams[currentSlideIndex]) {
+      symEl.textContent = allStreams[currentSlideIndex].symbol;
+    }
+  } else if (latestCandle) {
+    // Fallback: single symbol mode
+    const sym = latestCandle.symbol || 'UNKNOWN';
+    updateSymbolPills([sym]);
+    updateSlide(sym, latestCandle, lastCompletedCandle, null);
+
+    const symEl = document.getElementById('disc-asset');
+    if (symEl) symEl.textContent = sym;
   }
 }
 

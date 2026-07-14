@@ -200,6 +200,20 @@ const COMMAND_HANDLERS = {
       }
     }
 
+    // Collect ALL active streams for multi-symbol carousel
+    const allStreams = [];
+    for (const [symbol, stream] of tickAggregator.streams.entries()) {
+      const current = stream.currentCandle;
+      if (!current) continue;
+      const lastCompleted = stream.last200.length > 0 ? stream.last200[stream.last200.length - 1] : null;
+      allStreams.push({
+        symbol,
+        latestCandle: current,
+        lastCompletedCandle: lastCompleted,
+        indicators: stream.indicators || null
+      });
+    }
+
     const activeReplay = sessionStatus.replayEngine || { isPlaying: false, currentIndex: 0, candles: [] };
 
     sendResponse({
@@ -209,6 +223,7 @@ const COMMAND_HANDLERS = {
       logs: logs,
       latestCandle: latestCandle,
       lastCompletedCandle: lastCompletedCandle,
+      allStreams: allStreams,
       activeProvider: sessionStatus.providerName || 'none',
       state: stateMachine.getCurrentState(),
       telemetry: telemetry.getSummary(),

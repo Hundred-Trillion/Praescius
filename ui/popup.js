@@ -5,6 +5,7 @@
 
 import { getTabId, startStatusPolling, uiEventBus } from './panels/UIState.js';
 import { initInstantAIConfig, handleClearDB } from './panels/SettingsPanel.js';
+import strategyLibrary from '../strategies/StrategyLibrary.js';
 import {
   updateConnectionStatus,
   updateDiscoveryReport,
@@ -66,6 +67,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-export-csv')?.addEventListener('click', () => triggerExport('csv'));
   document.getElementById('btn-clear-db')?.addEventListener('click', handleClearDB);
 
+  // Quick Buttons — One-click pattern rule import
+  const quickBtnHandler = (strategyId, btnId) => {
+    document.getElementById(btnId)?.addEventListener('click', async () => {
+      const statusEl = document.getElementById('quick-btn-status');
+      try {
+        await strategyLibrary.load();
+        const strategy = strategyLibrary.getById(strategyId);
+        if (!strategy) {
+          if (statusEl) { statusEl.textContent = '⚠ Strategy not found in library.'; statusEl.style.color = 'var(--danger)'; statusEl.style.display = 'block'; }
+          return;
+        }
+        const rule = strategyLibrary.toRule(strategy);
+        chrome.storage.local.get(['rules'], (res) => {
+          const rules = res.rules || [];
+          if (rules.some(r => r.id === rule.id)) {
+            if (statusEl) { statusEl.textContent = `⚠ "${strategy.strategyName}" is already active.`; statusEl.style.color = 'var(--warning)'; statusEl.style.display = 'block'; }
+            return;
+          }
+          rules.push(rule);
+          chrome.storage.local.set({ rules }, () => {
+            if (statusEl) { statusEl.textContent = `✓ "${strategy.strategyName}" added to rules!`; statusEl.style.color = 'var(--success)'; statusEl.style.display = 'block'; }
+            renderRules();
+            setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 3000);
+          });
+        });
+      } catch (err) {
+        if (statusEl) { statusEl.textContent = '⚠ Error importing strategy.'; statusEl.style.color = 'var(--danger)'; statusEl.style.display = 'block'; }
+      }
+    });
+  };
+  quickBtnHandler(1001, 'btn-quick-shooting-star');
+  quickBtnHandler(1002, 'btn-quick-bull-engulf');
+
   document.getElementById('btn-kill-switch')?.addEventListener('click', () => {
     chrome.runtime.sendMessage({ action: 'TOGGLE_KILL_SWITCH' }, (res) => {
       if (res && res.killSwitch !== undefined) {
@@ -122,7 +156,7 @@ uiEventBus.addEventListener('status_update', (e) => {
   if (response.discovery || response.activeProvider) {
     updateDiscoveryReport(response.discovery, response.activeProvider);
   }
-  updateMetrics(response.stats, response.latestCandle, response.lastCompletedCandle);
+  updateMetrics(response.stats, response.latestCandle, response.lastCompletedCandle, response.allStreams);
   updateLogs(response.logs);
   
   // Log the fully closed 1m candles instead of live tick spam
