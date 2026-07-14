@@ -899,7 +899,13 @@ async function connectWallet() {
     if (pBtn) pBtn.textContent = 'Connecting...';
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs && tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'CONNECT_WALLET_POPUP' });
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'CONNECT_WALLET_POPUP' }, (response) => {
+          if (chrome.runtime.lastError) {
+            alert('Cannot connect wallet here. Please open a supported broker page (e.g. QxBroker) first.');
+            if (btn) btn.textContent = 'Connect Web3 Wallet';
+            if (pBtn) pBtn.textContent = 'Connect Web3 Wallet';
+          }
+        });
       } else {
         alert('Please open a broker charting page first to connect a Web3 wallet.');
         if (btn) btn.textContent = 'Connect Web3 Wallet';
@@ -977,7 +983,14 @@ async function signWallet() {
     const hexMessage = '0x' + new TextEncoder().encode(message).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs && tabs[0]) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'SIGN_WALLET_POPUP', hexMessage, account });
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'SIGN_WALLET_POPUP', hexMessage, account }, (response) => {
+          if (chrome.runtime.lastError) {
+            alert('Cannot sign message here. Please ensure a supported broker page is open.');
+            if (status) {
+              status.style.display = 'none';
+            }
+          }
+        });
       }
     });
     return;
