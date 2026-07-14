@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Praescius",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Multi-broker market observer by Nanduri Labs with modular plugins, local rules engine, Event Bus, and AI translators.",
   "permissions": [
     "storage",
