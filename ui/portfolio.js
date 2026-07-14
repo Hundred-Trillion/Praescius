@@ -519,7 +519,6 @@ async function updateCorrelationMatrix() {
   const assets = ['BTC/USD', 'ETH/USD', 'EUR/USD', 'GBP/USD'];
   const gridContainer = document.getElementById('correlation-matrix-grid');
   if (!gridContainer) return;
-  gridContainer.innerHTML = '';
 
   // Get correlation values
   const matrix = {};
@@ -538,6 +537,9 @@ async function updateCorrelationMatrix() {
       matrix[a][b] = calculateCorrelation(candlesA, candlesB);
     }
   }
+
+  // Clear container only AFTER async data is fetched to prevent UI blinking
+  gridContainer.innerHTML = '';
 
   // Render table grid
   assets.forEach(rowAsset => {

@@ -15,6 +15,9 @@ V2 introduces the **Portfolio Hub & AI Coach**, bringing deep quantitative diagn
 The extension has been entirely overhauled with a **Neobrutalist UI** and a massive suite of analytical tools built into the new **Portfolio Hub**:
 
 *   **🤖 AI Trade Assistant:** Analyzes the live macro-trend, volume, and RSI structure of any asset, providing a real-time Confidence Score before you execute a setup.
+*   **📚 The Strategy Library:** A pre-loaded JSON bundle of 176 distinct trading strategies (including Mean Reversion, Trend Following, and Order Block plays) ready to execute against the engine.
+*   **📱 Instant Telegram Alerts:** Bind your Telegram Chat ID and API Token to route all rule evaluations and AI-summarized signals directly to your mobile device.
+*   **📊 Multi-Symbol Live Carousel:** A perfectly synced, Neobrutalist swipeable UI that displays compact, live OHLC grids, volume, and EMA 9/21 trends for multiple active data streams simultaneously.
 *   **📋 One-Click Trade Checklist:** A hard UI gate enforcing discipline. You cannot click the "Unlock Trade Execution" button until you manually confirm support zones, trend alignment, and risk management.
 *   **⚠️ Emotion Detector:** Actively monitors your paper trading journal in real-time. If you take more than 5 rapid-fire trades within 20 minutes, it flashes red, recalculates your degraded win rate, and explicitly tells you to stop revenge trading.
 *   **📰 ForexFactory News Filter:** A background worker that hits the official `faireconomy.media` JSON API every hour. If it detects a High-Impact news event (like CPI or NFP) dropping within the next 4 hours, it triggers an aggressive UI warning to avoid trading that currency.
