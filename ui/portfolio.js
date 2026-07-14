@@ -467,7 +467,6 @@ async function updateScanners(candles) {
   // 1. Technical zones (BOS, CHoCH, OBs, FVGs)
   const bosContainer = document.getElementById('scanner-bos-list');
   if (bosContainer) {
-    bosContainer.innerHTML = '';
     const obs = detectOrderBlocks(candles, 10);
     const fvgs = detectFVGs(candles).slice(-3);
     const { events } = detectBOSCHoCH(candles);
@@ -478,8 +477,12 @@ async function updateScanners(candles) {
     fvgs.forEach(f => allTriggers.push({ type: f.type === 'bullFVG' ? 'Bullish FVG' : 'Bearish FVG', price: f.top }));
     recentEvents.forEach(e => allTriggers.push({ type: e.type.includes('bull') ? 'Bullish BOS' : 'Bearish BOS', price: e.price }));
 
+    const frag = document.createDocumentFragment();
     if (allTriggers.length === 0) {
-      bosContainer.innerHTML = '<div style="font-size:0.6rem; color:var(--text-muted);">No zones detected.</div>';
+      const d = document.createElement('div');
+      d.style.cssText = 'font-size:0.6rem; color:var(--text-muted);';
+      d.textContent = 'No zones detected.';
+      frag.appendChild(d);
     } else {
       allTriggers.forEach(t => {
         const item = document.createElement('div');
@@ -489,26 +492,33 @@ async function updateScanners(candles) {
           <span style="color: ${isBull ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${t.type}</span>
           <span style="color: var(--text-main); font-family:monospace;">$${t.price.toFixed(2)}</span>
         `;
-        bosContainer.appendChild(item);
+        frag.appendChild(item);
       });
     }
+    bosContainer.innerHTML = '';
+    bosContainer.appendChild(frag);
   }
 
   // 2. Candlestick patterns
   const candContainer = document.getElementById('scanner-candlestick-list');
   if (candContainer) {
-    candContainer.innerHTML = '';
     const patterns = detectCandlestickPatterns(candles);
+    const frag = document.createDocumentFragment();
     if (patterns.length === 0) {
-      candContainer.innerHTML = '<div style="font-size:0.6rem; color:var(--text-muted);">No candlestick formations.</div>';
+      const d = document.createElement('div');
+      d.style.cssText = 'font-size:0.6rem; color:var(--text-muted);';
+      d.textContent = 'No candlestick formations.';
+      frag.appendChild(d);
     } else {
       patterns.forEach(pat => {
         const item = document.createElement('div');
         item.style.cssText = 'font-size: 0.65rem; color: var(--primary); font-weight: bold; margin-bottom: 2px;';
         item.textContent = `✦ ${pat}`;
-        candContainer.appendChild(item);
+        frag.appendChild(item);
       });
     }
+    candContainer.innerHTML = '';
+    candContainer.appendChild(frag);
   }
 }
 
@@ -883,8 +893,23 @@ async function connectWallet() {
     if (pBtn) pBtn.textContent = 'Connecting...';
     window.parent.postMessage({ source: 'praescius-iframe', type: 'CONNECT_WALLET' }, '*');
     return;
+  } else if (chrome.tabs && chrome.tabs.query) {
+    // We are in the popup extension, send message to active tab
+    if (btn) btn.textContent = 'Connecting...';
+    if (pBtn) pBtn.textContent = 'Connecting...';
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs && tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'CONNECT_WALLET_POPUP' });
+      } else {
+        alert('Please open a broker charting page first to connect a Web3 wallet.');
+        if (btn) btn.textContent = 'Connect Web3 Wallet';
+        if (pBtn) pBtn.textContent = 'Connect Web3 Wallet';
+      }
+    });
+    return;
   }
-  
+
+  // Fallback for native connection (should not hit in isolated world)
   if (typeof window.ethereum !== 'undefined') {
     try {
       if (btn) btn.textContent = 'Connecting...';
@@ -942,6 +967,20 @@ async function signWallet() {
     const hexMessage = '0x' + new TextEncoder().encode(message).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
     window.parent.postMessage({ source: 'praescius-iframe', type: 'SIGN_WALLET', hexMessage, account }, '*');
     return;
+  } else if (chrome.tabs && chrome.tabs.query) {
+    if (status) {
+      status.textContent = 'Signing message...';
+      status.style.color = 'var(--warning)';
+      status.style.display = 'block';
+    }
+    const message = `Sign this message to verify ownership of your wallet on Praescius.\nTimestamp: ${Date.now()}`;
+    const hexMessage = '0x' + new TextEncoder().encode(message).reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs && tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'SIGN_WALLET_POPUP', hexMessage, account });
+      }
+    });
+    return;
   }
 
   if (typeof window.ethereum !== 'undefined') {
@@ -981,12 +1020,24 @@ async function signWallet() {
   }
 }
 
-// Add the window message listener for cross-context bridge responses
+// Add the window message listener for cross-context bridge responses (iframe mode)
 window.addEventListener('message', (event) => {
   const msg = event.data;
   if (!msg || typeof msg !== 'object') return;
   if (msg.source !== 'praescius-bridge-response') return;
+  handleWalletBridgeResponse(msg);
+});
 
+// Add runtime listener for popup mode
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.action === 'WALLET_BRIDGE_RESPONSE') {
+      handleWalletBridgeResponse(message);
+    }
+  });
+}
+
+function handleWalletBridgeResponse(msg) {
   if (msg.type === 'CONNECT_WALLET_RESPONSE') {
     const btn = document.getElementById('btn-wallet-connect');
     const details = document.getElementById('wallet-details');
@@ -1045,7 +1096,7 @@ window.addEventListener('message', (event) => {
       }
     }
   }
-});
+}
 
 /* ==========================================
    11. ADVANCED BACKTESTING

@@ -59,6 +59,20 @@ try {
       } else if (message.action === 'SET_SIDEBAR_STATE') {
         initSidebar(message.open);
         sendResponse({ success: true });
+      } else if (message.action === 'CONNECT_WALLET_POPUP') {
+        window.postMessage({
+          source: 'praescius-bridge',
+          type: 'CONNECT_WALLET'
+        }, '*');
+        sendResponse({ success: true });
+      } else if (message.action === 'SIGN_WALLET_POPUP') {
+        window.postMessage({
+          source: 'praescius-bridge',
+          type: 'SIGN_WALLET',
+          hexMessage: message.hexMessage,
+          account: message.account
+        }, '*');
+        sendResponse({ success: true });
       }
       return true;
     });
@@ -111,6 +125,11 @@ window.addEventListener('message', (event) => {
         source: 'praescius-bridge-response'
       }, '*');
     }
+    // Relay back to popup extension context
+    safeSendMessage({
+      action: 'WALLET_BRIDGE_RESPONSE',
+      ...msg
+    });
   }
 });
 
