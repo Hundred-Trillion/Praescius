@@ -130,7 +130,7 @@ setInterval(() => {
       const now = Date.now();
       if (scraped.price === lastPrice) {
         unchangedCount++;
-        if (unchangedCount >= 30 && !isStale) {
+        if (unchangedCount === 30) {
           isStale = true;
           console.warn('[Praescius DOM Fallback] DOM price feed is stale. No change in 30 seconds.');
           safeSendMessage({
@@ -143,19 +143,18 @@ setInterval(() => {
         isStale = false;
         unchangedCount = 0;
         lastPrice = scraped.price;
-        lastUpdate = now;
-        
         console.log('[Praescius DOM Fallback] Scraped Price:', scraped.price, 'Symbol:', scraped.symbol, 'Confidence:', scraped.confidence);
-        
-        safeSendMessage({
-          action: 'DOM_TICK',
-          price: scraped.price,
-          symbol: scraped.symbol || 'UNKNOWN',
-          source: scraped.source,
-          confidence: scraped.confidence,
-          timestamp: now
-        });
       }
+      
+      lastUpdate = now;
+      safeSendMessage({
+        action: 'DOM_TICK',
+        price: scraped.price,
+        symbol: scraped.symbol || 'UNKNOWN',
+        source: scraped.source,
+        confidence: scraped.confidence,
+        timestamp: now
+      });
     }
   }
 }, 1000);

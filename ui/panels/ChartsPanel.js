@@ -55,26 +55,26 @@ function getOrCreateSlide(symbol) {
   const slide = document.createElement('div');
   slide.className = 'metrics-slide';
   slide.dataset.symbol = symbol;
-  slide.style.cssText = 'min-width: 100%; scroll-snap-align: start; flex-shrink: 0;';
+  slide.style.cssText = 'min-width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(0, 0, 0, 0.2); scroll-snap-align: start; flex-shrink: 0;';
 
-  const row = (label, id) => `
-    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 6px;">
+  const row = (label, field, defaultText = '—', isStacked = false) => `
+    <div style="display: flex; flex-direction: ${isStacked ? 'column' : 'row'}; justify-content: space-between; align-items: ${isStacked ? 'stretch' : 'center'}; border-top: 1px solid var(--border-color); padding-top: 4px; gap: ${isStacked ? '2px' : '0'};">
       <span style="color: var(--text-muted);">${label}</span>
-      <span id="${id}" style="font-family: monospace; font-weight: bold; font-size: 0.75rem;">—</span>
+      <span data-field="${field}" style="font-family: monospace; font-weight: bold; font-size: 0.7rem; text-align: right; word-break: break-word; letter-spacing: -0.2px;">${defaultText}</span>
     </div>`;
 
   slide.innerHTML = `
-    <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 2px;">
         <span style="color: var(--text-muted);">Live Price:</span>
-        <span data-field="price" style="font-family: monospace; font-size: 1.15rem; font-weight: 900; color: var(--text-main);">0.00000</span>
+        <span data-field="price" style="font-family: monospace; font-size: 1.05rem; font-weight: 900; color: var(--text-main); letter-spacing: -0.5px;">0.00000</span>
       </div>
-      ${row('1m Candle Change:', `__unused__`).replace('id="__unused__"', 'data-field="change"')}
-      ${row('Live Candle OHLC:', `__unused__`).replace('id="__unused__"', 'data-field="ohlc"')}
-      ${row('Last Candle OHLC:', `__unused__`).replace('id="__unused__"', 'data-field="last-ohlc"').replace('—', 'Waiting for 1m close...')}
-      ${row('Minute Tick Volume:', `__unused__`).replace('id="__unused__"', 'data-field="tick-vol"').replace('—', '0 ticks')}
-      ${row('Live Trend (EMA 9/21):', `__unused__`).replace('id="__unused__"', 'data-field="ema"').replace('—', 'Waiting for 21m data...')}
-      ${row('Market Regime:', `__unused__`).replace('id="__unused__"', 'data-field="regime"').replace('—', 'Waiting for 21m data...')}
+      ${row('1m Candle Change:', 'change')}
+      ${row('Live Candle OHLC:', 'ohlc', '—', true)}
+      ${row('Last Candle OHLC:', 'last-ohlc', 'Waiting for 1m close...', true)}
+      ${row('Minute Tick Volume:', 'tick-vol', '0 ticks')}
+      ${row('Live Trend (EMA 9/21):', 'ema', 'Waiting for 21m data...', true)}
+      ${row('Market Regime:', 'regime', 'Waiting for 21m data...')}
     </div>
   `;
 
@@ -107,20 +107,20 @@ function updateSlide(symbol, candle, lastCompletedCandle, indicators) {
   }
 
   const changeEl = getField(slide, 'change');
-  if (changeEl && candle.open) {
-    const chg = ((cur - candle.open) / candle.open) * 100;
+  if (changeEl && candle.open !== undefined) {
+    const chg = candle.open ? ((cur - candle.open) / candle.open) * 100 : 0;
     changeEl.textContent = (chg > 0 ? '+' : '') + chg.toFixed(5) + '%';
     changeEl.style.color = chg >= 0 ? 'var(--success)' : 'var(--danger)';
   }
 
   const ohlcEl = getField(slide, 'ohlc');
-  if (ohlcEl && candle.open !== undefined) {
-    ohlcEl.textContent = `O:${candle.open.toFixed(6)} H:${candle.high.toFixed(6)} L:${candle.low.toFixed(6)} C:${candle.close.toFixed(6)}`;
+  if (ohlcEl && candle.open !== undefined && candle.high !== undefined && candle.low !== undefined && candle.close !== undefined) {
+    ohlcEl.innerHTML = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; text-align: right;"><span>O:${candle.open.toFixed(5)}</span><span>H:${candle.high.toFixed(5)}</span><span>L:${candle.low.toFixed(5)}</span><span>C:${candle.close.toFixed(5)}</span></div>`;
   }
 
   const lastOhlcEl = getField(slide, 'last-ohlc');
-  if (lastOhlcEl && lastCompletedCandle && lastCompletedCandle.open !== undefined) {
-    lastOhlcEl.textContent = `O:${lastCompletedCandle.open.toFixed(6)} H:${lastCompletedCandle.high.toFixed(6)} L:${lastCompletedCandle.low.toFixed(6)} C:${lastCompletedCandle.close.toFixed(6)}`;
+  if (lastOhlcEl && lastCompletedCandle && lastCompletedCandle.open !== undefined && lastCompletedCandle.high !== undefined && lastCompletedCandle.low !== undefined && lastCompletedCandle.close !== undefined) {
+    lastOhlcEl.innerHTML = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; text-align: right;"><span>O:${lastCompletedCandle.open.toFixed(5)}</span><span>H:${lastCompletedCandle.high.toFixed(5)}</span><span>L:${lastCompletedCandle.low.toFixed(5)}</span><span>C:${lastCompletedCandle.close.toFixed(5)}</span></div>`;
   }
 
   const tickVolEl = getField(slide, 'tick-vol');
@@ -397,6 +397,7 @@ export function initJSONLExtraction() {
 
       try {
         const { db, appLogger } = await getUIStore();
+        if (!db) throw new Error("Database not initialized");
         let candles = await getCandles(db, null, null, 100000);
         candles = candles.filter(c => c.timestamp >= startTime && c.timestamp <= stopTime);
 
@@ -437,6 +438,7 @@ export function initJSONLExtraction() {
 
     try {
       const { db, appLogger } = await getUIStore();
+      if (!db) throw new Error("Database not initialized");
       let candles = await getCandles(db, null, null, 100000);
 
       if (minTimestamp !== null) {
@@ -471,6 +473,7 @@ export function initJSONLExtraction() {
 export async function triggerExport(format) {
   try {
     const { db, appLogger } = await getUIStore();
+    if (!db) throw new Error("Database not initialized");
     let candles = await getCandles(db, null, null, 100000);
 
     const tfFilter = document.getElementById('extract-tf-filter');
@@ -518,6 +521,7 @@ export async function triggerExport(format) {
 export async function exportRecentCandles(minutes) {
   try {
     const { db } = await getUIStore();
+    if (!db) throw new Error("Database not initialized");
     let candles = await getCandles(db, null, null, 100000);
     
     // Filter strictly for 1m completed candles

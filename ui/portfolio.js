@@ -972,6 +972,8 @@ async function signWallet() {
         status.style.color = 'var(--danger)';
         status.style.display = 'block';
         setTimeout(() => { status.style.display = 'none'; }, 4000);
+      } else {
+        alert('Signing Failed: ' + err.message);
       }
     }
   }
@@ -1036,6 +1038,8 @@ window.addEventListener('message', (event) => {
         status.style.color = 'var(--danger)';
         status.style.display = 'block';
         setTimeout(() => { status.style.display = 'none'; }, 4000);
+      } else {
+        alert('Signing Failed: ' + msg.error);
       }
     }
   }

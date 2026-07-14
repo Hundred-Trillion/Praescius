@@ -276,7 +276,9 @@
         data: report
       }, '*');
     } catch (err) {
-      console.warn(`[${namespace}] Discovery run failed:`, err);
+      if (document.readyState === 'complete') {
+        console.warn(`[${namespace}] Discovery run failed:`, err);
+      }
     }
   }
 

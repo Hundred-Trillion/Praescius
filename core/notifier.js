@@ -18,7 +18,14 @@ export function showNotification(title, message, iconUrl = '../icons/icon128.png
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: settings.telegramChatId, text: `${title}\n\n${message}` })
-      }).catch(err => console.error('[Telegram Error]:', err));
+      }).then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      }).catch(err => {
+        console.error('[Telegram Error]:', err);
+        if (typeof chrome !== 'undefined' && chrome.runtime) {
+          chrome.runtime.sendMessage({ action: 'NOTIFICATION_FAILED', error: err.message, platform: 'telegram' }).catch(() => {});
+        }
+      });
     }
 
     if (settings.notificationsEnabled === false) return;
@@ -34,6 +41,7 @@ export function showNotification(title, message, iconUrl = '../icons/icon128.png
       }, (notificationId) => {
         if (chrome.runtime.lastError) {
           console.error('[Notifier] Notification Error:', chrome.runtime.lastError);
+          chrome.runtime.sendMessage({ action: 'NOTIFICATION_FAILED', error: chrome.runtime.lastError.message, platform: 'desktop' }).catch(() => {});
         }
       });
     } else if (typeof Notification !== 'undefined') {

@@ -68,7 +68,7 @@ export class TickAggregator {
   pushCompletedCandle(candle) {
     if (!candle) return;
     const symbol = candle.symbol || 'BTC/USD';
-    const stream = this._getOrCreateStream(symbol);
+    const stream = this._initSymbol(symbol);
     
     stream.last200.push(candle);
     if (stream.last200.length > 200) {

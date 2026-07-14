@@ -17,23 +17,46 @@ export async function getUIStore() {
 }
 
 export function getTabId(callback) {
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-    chrome.runtime.sendMessage({ action: 'GET_ACTIVE_SESSION_ID' }, (response) => {
-      if (response && response.tabId) {
-        callback(response.tabId);
-      } else {
-        // Fallback to active window query if background is unresponsive
+  const fallback = () => {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs && tabs.length > 0) {
-            callback(tabs[0].id);
-          } else {
+          try {
+            if (chrome.runtime && chrome.runtime.lastError) {
+              return callback('default');
+            }
+            if (tabs && tabs.length > 0) callback(tabs[0].id);
+            else callback('default');
+          } catch (e) {
             callback('default');
           }
         });
+      } else {
+        callback('default');
       }
-    });
+    } catch (e) {
+      callback('default');
+    }
+  };
+
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+    try {
+      chrome.runtime.sendMessage({ action: 'GET_ACTIVE_SESSION_ID' }, (response) => {
+        try {
+          if (chrome.runtime && chrome.runtime.lastError || !response || !response.tabId) {
+            fallback();
+          } else {
+            callback(response.tabId);
+          }
+        } catch (err) {
+          fallback();
+        }
+      });
+    } catch (err) {
+      fallback();
+    }
   } else {
-    callback('default');
+    fallback();
   }
 }
 
@@ -46,16 +69,31 @@ export function startStatusPolling() {
 
 function pollStatus() {
   getTabId((tabId) => {
-    chrome.runtime.sendMessage({ action: 'GET_STATUS', tabId: tabId }, (response) => {
-      if (chrome.runtime.lastError || !response || !response.success) {
-        uiEventBus.dispatchEvent(new CustomEvent('status_update', { detail: { isOnline: false } }));
-        return;
-      }
-      uiEventBus.dispatchEvent(new CustomEvent('status_update', { detail: { isOnline: true, response } }));
-    });
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      try {
+        chrome.runtime.sendMessage({ action: 'GET_STATUS', tabId: tabId }, (response) => {
+          try {
+            if (chrome.runtime && chrome.runtime.lastError || !response || !response.success) {
+              uiEventBus.dispatchEvent(new CustomEvent('status_update', { detail: { isOnline: false } }));
+              return;
+            }
+            uiEventBus.dispatchEvent(new CustomEvent('status_update', { detail: { isOnline: true, response } }));
+          } catch (e) {
+            uiEventBus.dispatchEvent(new CustomEvent('status_update', { detail: { isOnline: false } }));
+          }
+        });
+      } catch (e) {}
+    }
   });
 
-  chrome.storage.local.get(['settings'], (res) => {
-    uiEventBus.dispatchEvent(new CustomEvent('settings_update', { detail: res.settings || {} }));
-  });
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    try {
+      chrome.storage.local.get(['settings'], (res) => {
+        try {
+          if (chrome.runtime && chrome.runtime.lastError) return;
+          uiEventBus.dispatchEvent(new CustomEvent('settings_update', { detail: res.settings || {} }));
+        } catch (e) {}
+      });
+    } catch (e) {}
+  }
 }

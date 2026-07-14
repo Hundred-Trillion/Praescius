@@ -47,7 +47,7 @@ async function sendTelegram(message) {
     const chatId = settings.telegramChatId;
     if (!token || !chatId) return;
 
-    await fetch(
+    const resp = await fetch(
       `https://api.telegram.org/bot${token}/sendMessage`,
       {
         method: "POST",
@@ -55,8 +55,13 @@ async function sendTelegram(message) {
         body: JSON.stringify({ chat_id: chatId, text: message })
       }
     );
+    if (!resp.ok) {
+      console.error(`Telegram HTTP Error: ${resp.status} ${resp.statusText}`);
+      eventBus.publish('system.logs.v1', { message: `Telegram network error: ${resp.statusText}`, type: 'error' });
+    }
   } catch (err) {
     console.error("Telegram Error:", err);
+    eventBus.publish('system.logs.v1', { message: `Telegram fetch error: ${err.message}`, type: 'error' });
   }
 }
 
@@ -179,14 +184,14 @@ function evaluateActiveRules(symbol, tabId, isHistorical = false) {
         const trend = latestPrice > cache[Math.max(0, cache.length - 5)].close ? 'bullish' : 'bearish';
         
         let rsi = null, ema9 = null, ema21 = null, sma20 = null, macd = null;
-        try { const r = rsiCalculator.calculate(cache, { period: 14 }).pop(); if (typeof r === 'number') rsi = Number(r.toFixed(2)); } catch(e){}
-        try { const e = emaCalculator.calculate(cache, { period: 9 }).pop(); if (typeof e === 'number') ema9 = Number(e.toFixed(2)); } catch(e){}
-        try { const e = emaCalculator.calculate(cache, { period: 21 }).pop(); if (typeof e === 'number') ema21 = Number(e.toFixed(2)); } catch(e){}
-        try { const s = smaCalculator.calculate(cache, { period: 20 }).pop(); if (typeof s === 'number') sma20 = Number(s.toFixed(2)); } catch(e){}
+        try { const r = rsiCalculator.calculate(cache, { period: 14 }).pop(); if (typeof r === 'number') rsi = Number(r.toFixed(2)); } catch(e){ console.error('RSI calc err:', e); }
+        try { const e = emaCalculator.calculate(cache, { period: 9 }).pop(); if (typeof e === 'number') ema9 = Number(e.toFixed(2)); } catch(e){ console.error('EMA9 calc err:', e); }
+        try { const e = emaCalculator.calculate(cache, { period: 21 }).pop(); if (typeof e === 'number') ema21 = Number(e.toFixed(2)); } catch(e){ console.error('EMA21 calc err:', e); }
+        try { const s = smaCalculator.calculate(cache, { period: 20 }).pop(); if (typeof s === 'number') sma20 = Number(s.toFixed(2)); } catch(e){ console.error('SMA20 calc err:', e); }
         try { 
           const m = macdCalculator.calculate(cache).pop(); 
           if (m && typeof m.macd === 'number') macd = { macd: Number(m.macd.toFixed(4)), signal: Number(m.signal.toFixed(4)), histogram: Number(m.histogram.toFixed(4)) };
-        } catch(e){}
+        } catch(e){ console.error('MACD calc err:', e); }
 
         const mlConfidence = getMLConfidenceReport(cache, rule, confidence);
         const summary = {
@@ -205,6 +210,8 @@ function evaluateActiveRules(symbol, tabId, isHistorical = false) {
         try {
           alertText = await aiManager.summarizeNotification(provider, apiKey, summary, modelName);
         } catch (e) {
+          console.error('[AI Summarizer Error]:', e);
+          eventBus.publish('system.logs.v1', { message: `AI Summary Failed: ${e.message}`, type: 'warning' });
           alertText = `Rule: "${rule.name}" met.\nPrice: ${latestPrice.toLocaleString()}\nTime: ${new Date().toLocaleTimeString()}`;
         }
         telemetry.recordNotificationLatency(performance.now() - tStartNotif);

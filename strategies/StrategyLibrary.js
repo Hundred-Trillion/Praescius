@@ -1,7 +1,7 @@
 /**
  * StrategyLibrary — Predefined alert strategy dataset for Ultra customers.
  *
- * Loads the 174-strategy JSON bundle and exposes a rich query API:
+ * Loads the 176-strategy JSON bundle and exposes a rich query API:
  *   getAll()            → all strategies
  *   getById(id)         → single strategy by numeric ID
  *   getByCategory(cat)  → filtered by category (Trend, Momentum, Pattern, etc.)
@@ -37,7 +37,7 @@ export class StrategyLibrary {
     }
   }
 
-  /** @returns {object[]} All 174 strategies */
+  /** @returns {object[]} All 176 strategies */
   getAll() {
     return this._strategies;
   }
